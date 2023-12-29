@@ -2,31 +2,26 @@
 
 namespace App\Console;
 
+use App\Console\Commands\MaintenanceFetchOuis;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
+use Illuminate\Support\Facades\Cache;
+use LibreNMS\Config;
+use LibreNMS\Util\Debug;
 use LibreNMS\Util\Version;
 
 class Kernel extends ConsoleKernel
 {
-    /**
-     * The Artisan commands provided by your application.
-     *
-     * @var array
-     */
-    protected $commands = [
-        //
-    ];
-
     /**
      * Define the application's command schedule.
      *
      * @param  \Illuminate\Console\Scheduling\Schedule  $schedule
      * @return void
      */
-    protected function schedule(Schedule $schedule)
+    protected function schedule(Schedule $schedule): void
     {
-        // $schedule->command('inspire')
-        //          ->hourly();
+        $this->scheduleMarkWorking($schedule);
+        $this->scheduleMaintenance($schedule);  // should be after all others
     }
 
     /**
@@ -34,9 +29,9 @@ class Kernel extends ConsoleKernel
      *
      * @return void
      */
-    protected function commands()
+    protected function commands(): void
     {
-        $this->load(__DIR__.'/Commands');
+        $this->load(__DIR__ . '/Commands');
 
         require base_path('routes/console.php');
 
@@ -49,8 +44,10 @@ class Kernel extends ConsoleKernel
     {
         if (is_null($this->artisan)) {
             parent::getArtisan();
-            $this->artisan->setName(\LibreNMS\Config::get('project_name', 'LibreNMS'));
-            $this->artisan->setVersion(Version::get()->local());
+            /** @phpstan-ignore-next-line */
+            $this->artisan->setName('LibreNMS');
+            /** @phpstan-ignore-next-line */
+            $this->artisan->setVersion(Version::VERSION);
         }
 
         return $this->artisan;
@@ -61,12 +58,35 @@ class Kernel extends ConsoleKernel
         // intercept input and check for debug
         if ($input->hasParameterOption(['-d', '--debug', '-vv', '-vvv'], true)) {
             if ($input->hasParameterOption(['-vvv'], true)) {
-                global $vdebug;
-                $vdebug = true;
+                Debug::setVerbose();
             }
-            $this->app->booted('set_debug');
+            $this->app->booted('\LibreNMS\Util\Debug::set');
         }
 
         return parent::handle($input, $output);
+    }
+
+    /**
+     * Store in the cache that the schedule is triggered.
+     * Used for Validation.
+     */
+    private function scheduleMarkWorking(Schedule $schedule): void
+    {
+        $schedule->call(function () {
+            Cache::put('scheduler_working', now(), now()->addMinutes(6));
+        })->everyFiveMinutes();
+    }
+
+    /**
+     * Schedule maintenance tasks
+     */
+    private function scheduleMaintenance(Schedule $schedule): void
+    {
+        $maintenance_log_file = Config::get('log_dir') . '/maintenance.log';
+
+        $schedule->command(MaintenanceFetchOuis::class, ['--wait'])
+            ->weeklyOn(0, '1:00')
+            ->onOneServer()
+            ->appendOutputTo($maintenance_log_file);
     }
 }

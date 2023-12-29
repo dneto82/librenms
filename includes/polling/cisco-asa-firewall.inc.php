@@ -14,34 +14,28 @@
 
 use LibreNMS\RRD\RrdDefinition;
 
-if ($device['os_group'] == 'cisco' && ( $device['os'] == 'asa' || $device['os'] == 'ftd' ) && $device['type'] == 'firewall') {
-    $oid_list  = 'cfwConnectionStatValue.protoIp.currentInUse';
-    $temp_data = snmpwalk_cache_double_oid($device, $oid_list, array(), 'CISCO-FIREWALL-MIB');
-    foreach ($temp_data as $oid => $result) {
-        $oid                = substr(strchr($oid, '.'), 1);
-        $data[$oid]['data'] = $result['cfwConnectionStatValue'];
-        $asa_db             = dbFetchCell('SELECT `ciscoASA_id` FROM `ciscoASA` WHERE `device_id` = ? AND `oid` = ?', array($device['device_id'], $oid));
-        if (!is_numeric($asa_db)) {
-            $asa_db = dbInsert(array('device_id' => $device['device_id'], 'oid' => $oid, 'data' => $result['cfwConnectionStatValue']), 'ciscoASA');
-        } else {
-            $asa_db = dbUpdate(array('data' => $result['cfwConnectionStatValue']), 'ciscoASA', 'device_id=?', array($device['device_id']));
-        }
+if ($device['os_group'] == 'cisco' && ($device['os'] == 'asa' || $device['os'] == 'ftd') && $device['type'] == 'firewall') {
+    $connections = SnmpQuery::get('CISCO-FIREWALL-MIB::cfwConnectionStatValue.protoIp.currentInUse')->value();
 
-        $data[$oid]['db_id'] = $asa_db;
-    }
+    if ($connections) {
+        DB::table('ciscoASA')->updateOrInsert([
+            'device_id' => $device['device_id'],
+            'oid' => 'currentInUse',
+        ], [
+            'data' => $connections,
+        ]);
 
-    if ($data['currentInUse']) {
         $rrd_def = RrdDefinition::make()->addDataset('connections', 'GAUGE', 0);
-        $fields = array(
-            'connections' => $data['currentInUse']['data'],
-        );
+        $fields = [
+            'connections' => $connections,
+        ];
 
         $tags = compact('rrd_def');
         data_update($device, 'asa_conns', $tags, $fields);
 
-        $graphs['asa_conns'] = true;
+        $os->enableGraph('asa_conns');
         echo ' ASA Connections';
     }
 
-    unset($data, $rrd_def);
+    unset($connections, $data, $rrd_def, $fields, $tags);
 }//end if

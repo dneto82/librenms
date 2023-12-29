@@ -2,9 +2,10 @@
 
 namespace App\Http\Middleware;
 
-use Auth;
 use Closure;
+use Illuminate\Http\Request;
 use LibreNMS\Config;
+use Symfony\Component\HttpFoundation\Response;
 
 class LoadUserPreferences
 {
@@ -13,11 +14,10 @@ class LoadUserPreferences
      *
      * @param  \Illuminate\Http\Request  $request
      * @param  \Closure  $next
-     * @return mixed
      */
-    public function handle($request, Closure $next)
+    public function handle(Request $request, Closure $next): Response
     {
-        $preferences = ['locale', 'site_style'];
+        $preferences = ['locale', 'site_style', 'timezone'];
         $this->loadPreferences($request, $preferences);
 
         $this->setPreference($request, 'locale', function ($locale) {
@@ -28,6 +28,10 @@ class LoadUserPreferences
             Config::set('applied_site_style', $style);
         });
 
+        $this->setPreference($request, 'timezone', function ($timezone) use ($request) {
+            $request->session()->put('preferences.timezone_static', true);
+        });
+
         return $next($request);
     }
 
@@ -35,21 +39,21 @@ class LoadUserPreferences
      * Fetch preferences from the database
      * Load all preferences at once if we need to query the database
      *
-     * @param \Illuminate\Http\Request $request
-     * @param array $preferences
+     * @param  \Illuminate\Http\Request  $request
+     * @param  array  $preferences
      */
     private function loadPreferences($request, $preferences)
     {
-        if (!$request->session()->has('preferences') && !is_null($request->user())) {
+        if (! $request->session()->has('preferences') && ! is_null($request->user())) {
             $loaded = $request->user()->preferences()->whereIn('pref', $preferences)->pluck('value', 'pref');
             $request->session()->put('preferences', $loaded);
         }
     }
 
     /**
-     * @param \Illuminate\Http\Request $request
-     * @param string $pref
-     * @param callable $callable
+     * @param  \Illuminate\Http\Request  $request
+     * @param  string  $pref
+     * @param  callable  $callable
      */
     private function setPreference($request, $pref, $callable)
     {

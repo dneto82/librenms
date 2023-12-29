@@ -15,10 +15,10 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
- * @package    LibreNMS
- * @link       http://librenms.org
+ * @link       https://www.librenms.org
+ *
  * @copyright  2017 Tony Murray
  * @author     Tony Murray <murraytony@gmail.com>
  */
@@ -31,7 +31,7 @@ use LibreNMS\Util\IPv6;
 
 class IpTest extends TestCase
 {
-    public function testIsValid()
+    public function testIsValid(): void
     {
         $this->assertTrue(IP::isValid('192.168.0.1'));
         $this->assertTrue(IP::isValid('192.168.0.1'));
@@ -46,7 +46,6 @@ class IpTest extends TestCase
         $this->assertTrue(IP::isValid('8.8.8.8', true));
         $this->assertTrue(IPv4::isValid('192.168.0.1', true));
         $this->assertTrue(IPv6::isValid('FF81::', true));
-        $this->assertTrue(IPv6::isValid('2001:db8:85a3::8a2e:370:7334', true));
         $this->assertFalse(IPv4::isValid('127.0.0.1', true));
         $this->assertFalse(IPv6::isValid('::1', true));
         $this->assertFalse(IP::isValid('169.254.1.1', true));
@@ -55,7 +54,17 @@ class IpTest extends TestCase
         $this->assertFalse(IP::isValid('Falafel', true));
     }
 
-    public function testIpParse()
+    /**
+     * See https://github.com/librenms/librenms/pull/13468 for more info
+     *
+     * @requires PHP >= 7.4
+     */
+    public function testIsValidIPv6ExcludeReserved(): void
+    {
+        $this->assertFalse(IPv6::isValid('2001:db8:85a3::8a2e:370:7334', true));
+    }
+
+    public function testIpParse(): void
     {
         $this->assertEquals('192.168.0.1', IP::parse('192.168.0.1'));
         $this->assertEquals('127.0.0.1', IP::parse('127.0.0.1'));
@@ -77,13 +86,14 @@ class IpTest extends TestCase
         new IPv4('::1');
     }
 
-    public function testHexToIp()
+    public function testHexToIp(): void
     {
-        $this->assertEquals("192.168.1.254", IP::fromHexString("c0 a8 01 fe"));
-        $this->assertEquals("192.168.1.254", IP::fromHexString("c0a801fe"));
-        $this->assertEquals("192.168.1.254", IP::fromHexString("c0 a8 01 fe "));
-        $this->assertEquals("192.168.1.254", IP::fromHexString("\"c0 a8 01 fe\""));
-        $this->assertEquals("192.168.1.254", IP::fromHexString("192.168.1.254"));
+        $this->assertEquals('192.168.1.254', IP::fromHexString('c0 a8 01 fe'));
+        $this->assertEquals('192.168.1.254', IP::fromHexString('c0a801fe'));
+        $this->assertEquals('192.168.1.254', IP::fromHexString('c0 a8 01 fe '));
+        $this->assertEquals('192.168.1.254', IP::fromHexString('"c0 a8 01 fe"'));
+        $this->assertEquals('192.168.1.254', IP::fromHexString('192.168.1.254'));
+        $this->assertEquals('62.40.125.125', IP::fromHexString('>(}}')); // stupid ascii encoded
 
         $this->assertEquals('2001:db8::2:1', IP::fromHexString('2001:db8::2:1'));
         $this->assertEquals('2001:db8::2:1', IP::fromHexString('20 01 0d b8 00 00 00 00 00 00 00 00 00 02 00 01'));
@@ -91,17 +101,18 @@ class IpTest extends TestCase
         $this->assertEquals('2001:db8::2:1', IP::fromHexString('"20:01:0d:b8:00:00:00:00:00:00:00:00:00:02:00:01"'));
         $this->assertEquals('2001:db8::2:1', IP::fromHexString('"20.01.0d.b8.00.00.00.00.00.00.00.00.00.02.00.01"'));
         $this->assertEquals('2001:db8::2:1', IP::fromHexString('20010db8000000000000000000020001'));
+        $this->assertEquals('3e28:7d7d:3e28:7d7d:3e28:7d7d:3e28:7d7d', IP::fromHexString('>(}}>(}}>(}}>(}}')); // stupid ascii encoded
 
         $this->assertEquals('::', IP::fromHexString('00000000000000000000000000000000'));
 
         $this->expectException('LibreNMS\Exceptions\InvalidIpException');
-        IP::fromHexString("c0 a8 01 01 fe");
+        IP::fromHexString('c0 a8 01 01 fe');
 
         $this->expectException('LibreNMS\Exceptions\InvalidIpException');
         IP::fromHexString('20 01 0d b8 00 00 00 00 00 00 00 00 00 02 00 00 00 01');
     }
 
-    public function testNetmask2Cidr()
+    public function testNetmask2Cidr(): void
     {
         $this->assertSame(32, IPv4::netmask2cidr('255.255.255.255'));
         $this->assertSame(30, IPv4::netmask2cidr('255.255.255.252'));
@@ -109,7 +120,7 @@ class IpTest extends TestCase
         $this->assertSame(16, IPv4::netmask2cidr('255.255.0.0'));
     }
 
-    public function testIpInNetwork()
+    public function testIpInNetwork(): void
     {
         $this->assertTrue(IP::parse('192.168.1.0')->inNetwork('192.168.1.0/24'));
         $this->assertTrue(IP::parse('192.168.1.32')->inNetwork('192.168.1.0/24'));
@@ -117,7 +128,6 @@ class IpTest extends TestCase
         $this->assertTrue(IP::parse('192.168.1.255')->inNetwork('192.168.1.0/24'));
         $this->assertFalse(IP::parse('192.168.1.1')->inNetwork('192.168.1.0'));
         $this->assertFalse(IP::parse('10.4.3.2')->inNetwork('192.168.1.0/16'));
-
 
         $this->assertTrue(IP::parse('::1')->inNetwork('::/64'));
         $this->assertTrue(IP::parse('2001:db7:85a3::8a2e:370:7334')->inNetwork('::/0'));
@@ -136,7 +146,7 @@ class IpTest extends TestCase
         IP::parse('192.168.1.0')->inNetwork('192.168.1.0');
     }
 
-    public function testIpv6Compress()
+    public function testIpv6Compress(): void
     {
         $this->assertEquals('::1', IP::parse('0:0:0:0:0:0:0:1'));
         $this->assertSame('::1', IP::parse('0:0:0:0:0:0:0:1')->compressed());
@@ -145,7 +155,7 @@ class IpTest extends TestCase
         $this->assertSame('2001:db8:85a3::8a2e:370:7334', IP::parse('2001:0db8:85a3:0000:0000:8a2e:0370:7334')->compressed());
     }
 
-    public function testIpv6Uncompress()
+    public function testIpv6Uncompress(): void
     {
         $this->assertSame('0000:0000:0000:0000:0000:0000:0000:0001', IP::parse('::1')->uncompressed());
         $this->assertSame('0000:0000:0000:0000:0000:0000:0000:0000', IP::parse('::')->uncompressed());
@@ -153,7 +163,7 @@ class IpTest extends TestCase
         $this->assertSame('2001:0db8:85a3:0001:0001:8a2e:0370:7334', IP::parse('2001:db8:85a3:1:1:8a2e:370:7334')->uncompressed());
     }
 
-    public function testNetworkFromIp()
+    public function testNetworkFromIp(): void
     {
         $this->assertSame('192.168.1.0/24', IP::parse('192.168.1.34')->getNetwork(24));
         $this->assertSame('192.168.1.0/24', IP::parse('192.168.1.0/24')->getNetwork());
@@ -168,7 +178,7 @@ class IpTest extends TestCase
         $this->assertSame('2001:db8:85a3:341a::370:7334', IP::parse('2001:db8:85a3:341a::370:7334/128')->getNetworkAddress());
     }
 
-    public function testToSnmpIndex()
+    public function testToSnmpIndex(): void
     {
         $this->assertSame('192.168.1.5', IP::parse('192.168.1.5')->toSnmpIndex());
         $this->assertSame('32.1.8.120.224.0.130.226.134.161.0.0.0.0.0.0', IP::parse('2001:878:e000:82e2:86a1:0000:0000:0000')->toSnmpIndex());

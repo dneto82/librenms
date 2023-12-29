@@ -15,10 +15,10 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
- * @package    LibreNMS
- * @link       http://librenms.org
+ * @link       https://www.librenms.org
+ *
  * @copyright  2018 Tony Murray
  * @author     Tony Murray <murraytony@gmail.com>
  */
@@ -36,7 +36,7 @@ class GraphiteStoreTest extends TestCase
 {
     protected $timestamp = 997464400;
 
-    public function setUp() : void
+    protected function setUp(): void
     {
         parent::setUp();
 
@@ -44,7 +44,7 @@ class GraphiteStoreTest extends TestCase
         Carbon::setTestNow(Carbon::createFromTimestamp($this->timestamp));
     }
 
-    public function tearDown() : void
+    protected function tearDown(): void
     {
         // restore Carbon:now() to normal
         Carbon::setTestNow();
@@ -52,7 +52,7 @@ class GraphiteStoreTest extends TestCase
         parent::tearDown();
     }
 
-    public function testSocketConnectError()
+    public function testSocketConnectError(): void
     {
         $mockFactory = \Mockery::mock(\Socket\Raw\Factory::class);
 
@@ -62,7 +62,7 @@ class GraphiteStoreTest extends TestCase
         new Graphite($mockFactory);
     }
 
-    public function testSocketWriteError()
+    public function testSocketWriteError(): void
     {
         $mockSocket = \Mockery::mock(\Socket\Raw\Socket::class);
         $graphite = $this->mockGraphite($mockSocket);
@@ -73,7 +73,7 @@ class GraphiteStoreTest extends TestCase
         $graphite->put(['hostname' => 'test'], 'fake', ['rrd_name' => 'name'], ['one' => 1]);
     }
 
-    public function testSimpleWrite()
+    public function testSimpleWrite(): void
     {
         $mockSocket = \Mockery::mock(\Socket\Raw\Socket::class);
         $graphite = $this->mockGraphite($mockSocket);
@@ -90,9 +90,8 @@ class GraphiteStoreTest extends TestCase
         $graphite->put($device, $measurement, $tags, $fields);
     }
 
-
     /**
-     * @param $mockSocket
+     * @param  mixed  $mockSocket
      * @return Graphite
      */
     private function mockGraphite($mockSocket)
@@ -103,6 +102,7 @@ class GraphiteStoreTest extends TestCase
             ->andReturn($mockSocket);
 
         $graphite = new Graphite($mockFactory);
+
         return $graphite;
     }
 }

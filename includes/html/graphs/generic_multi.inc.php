@@ -8,7 +8,7 @@
  *
  * @package    LibreNMS
  * @subpackage graphs
- * @link       http://librenms.org
+ * @link       https://www.librenms.org
  * @copyright  2017 LibreNMS
  * @author     LibreNMS Contributors
 */
@@ -29,25 +29,25 @@ if ($nototal) {
 }
 
 if ($width > '500') {
-    $rrd_options .= " COMMENT:'" . substr(str_pad($unit_text, ($descr_len + 5)), 0, ($descr_len + 5)) . "Now      Min      Max     Avg\l'";
-    if (!$nototal) {
+    $rrd_options .= " COMMENT:'" . substr(str_pad($unit_text, $descr_len + 5), 0, $descr_len + 5) . "Now      Min      Max     Avg\l'";
+    if (! $nototal) {
         $rrd_options .= " COMMENT:'Total      '";
     }
 
     $rrd_options .= " COMMENT:'\l'";
 } else {
-    $rrd_options .= " COMMENT:'" . substr(str_pad($unit_text, ($descr_len + 5)), 0, ($descr_len + 5)) . "Now      Min      Max     Avg\l'";
+    $rrd_options .= " COMMENT:'" . substr(str_pad($unit_text, $descr_len + 5), 0, $descr_len + 5) . "Now      Min      Max     Avg\l'";
 }
 
 $i = 0;
 $iter = 0;
-$ids = array();
+$ids = [];
 
 foreach ($rrd_list as $rrd) {
     if (isset($rrd['colour'])) {
         $colour = $rrd['colour'];
     } else {
-        if (!\LibreNMS\Config::get("graph_colours.$colours.$iter")) {
+        if (! \LibreNMS\Config::get("graph_colours.$colours.$iter")) {
             $iter = 0;
         }
         $colour = \LibreNMS\Config::get("graph_colours.$colours.$iter");
@@ -57,7 +57,7 @@ foreach ($rrd_list as $rrd) {
     $ds = $rrd['ds'];
     $filename = $rrd['filename'];
 
-    $descr = rrdtool_escape($rrd['descr'], $descr_len);
+    $descr = \LibreNMS\Data\Store\Rrd::fixedSafeDescr($rrd['descr'], $descr_len);
 
     $ids[] = ($id = 'ds' . $i);
 
@@ -93,8 +93,8 @@ if ($print_total) {
         $tot[] = '+';
     }
 
-    $rrd_options .= ' CDEF:tot=' . implode($tot, ',');
-    $rrd_options .= ' COMMENT:"  ' . rrdtool_escape('Total', $descr_len) . '"';
+    $rrd_options .= ' CDEF:tot=' . implode(',', $tot);
+    $rrd_options .= ' COMMENT:"  ' . \LibreNMS\Data\Store\Rrd::fixedSafeDescr('Total', $descr_len) . '"';
     $rrd_options .= ' GPRINT:tot:LAST:%5.1lf%s';
     $rrd_options .= ' GPRINT:tot:MIN:%5.1lf%s';
     $rrd_options .= ' GPRINT:tot:MAX:%5.1lf%s';

@@ -8,6 +8,7 @@ body {
   color: #555;
   font-size: 10pt;
   line-height: 20px;
+  overflow-y: scroll;
 }
 
 ul { margin: 0px; padding: 0px; list-style: disc outside; }
@@ -822,6 +823,22 @@ a.interface-upup:hover, a.interface-updown:hover, a.interface-admindown:hover {
   color: #999999;
 }
 
+.sensor-low, a.sensor-low, a.sensor-low:visited {
+  color: #c11;
+}
+
+.sensor-high, a.sensor-high, a.sensor-high:visited {
+  color: #c11;
+}
+
+.sensor-ok, a.sensor-ok, a.sensor-ok:visited {
+  color: #11a;
+}
+
+a.sensor-ok:hover, a.sensor-low:hover, a.sensor-high:hover {
+  color: #990099;
+}
+
 #top {
   height:17px;
   padding:2px 21px 0px 21px;
@@ -1550,6 +1567,7 @@ tr.search:nth-child(odd) {
 }
 
 .minigraph-image {
+  display: inline;
   margin: 2px;
 }
 
@@ -1660,7 +1678,11 @@ tr.search:nth-child(odd) {
      -moz-box-shadow: 0 5px 10px rgba(0,0,0,.2);
           box-shadow: 0 5px 10px rgba(0,0,0,.2);
 }
-
+@media (min-width: 768px)  {
+    .tt-open {
+        left: -400px !important;
+    }
+}
 .tt-open {
   position: absolute;
   top: 95%;
@@ -1668,7 +1690,6 @@ tr.search:nth-child(odd) {
   z-index: 100;
   display: none;
   min-width: 400px;
-  left: -400px !important;
   margin-bottom: 20px;
   overflow: hidden;
   padding: 8px;
@@ -1946,9 +1967,11 @@ label {
 .widget_body {
     padding: 0.8em;
     overflow-y: auto;
+    overflow-x: hidden;
     width: 100%;
     height: calc(100% - 38px);
     cursor: auto;
+    text-align: center;
 }
 
 .device-availability, .service-availability {
@@ -2041,7 +2064,8 @@ label {
   margin:2px;
 }
 
-.widget-availability-fixed {
+.widget-availability:empty {
+  display: inline;
   min-width: 2.4em;
   min-height: 1.3em;
   max-height: 1.6em;
@@ -2183,11 +2207,10 @@ label {
 }
 
 .device-table-icon {
-  padding-left:7px;
-  display: inline-block;
-  width: 64px;
-  height: 32px;
-  line-height: 32px;
+    display: flex;
+    align-items: center;
+    width: 32px;
+    height: 32px;
 }
 
 .device-table-icon img {
@@ -2251,10 +2274,6 @@ label {
 /* Workaround for https://github.com/select2/select2/issues/291 */
 .select2-selection--multiple .select2-search--inline .select2-search__field {
   width: auto !important;
-}
-
-.toast-top-right {
-  top: 34px;
 }
 
 .tooltip {
@@ -2361,4 +2380,27 @@ label {
     visibility: visible;
     opacity: 1;
     transition: opacity .15s;
+}
+
+#manage-device-groups-table > thead > tr > th:last-child {
+    min-width: 7%;
+}
+
+.logon-message {
+    white-space: pre-wrap;
+}
+
+.expandable {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.expandable:hover {
+    overflow: visible;
+}
+.expandable:hover span {
+    position: relative;
+    background-color: white;
+    padding: 2px 3px 2px 0;
+    z-index: 5;
 }

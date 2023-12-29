@@ -15,10 +15,10 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
- * @package    LibreNMS
- * @link       http://librenms.org
+ * @link       https://www.librenms.org
+ *
  * @copyright  2017 Tony Murray
  * @author     Tony Murray <murraytony@gmail.com>
  */
@@ -26,33 +26,31 @@
 namespace LibreNMS\Tests;
 
 use LibreNMS\Config;
-use LibreNMS\DB\Eloquent;
-use ReflectionClass;
 
 class ConfigTest extends TestCase
 {
     private $config;
 
-    public function setUp(): void
+    protected function setUp(): void
     {
         parent::setUp();
         $this->config = new \ReflectionProperty(Config::class, 'config');
         $this->config->setAccessible(true);
     }
 
-    public function testGetBasic()
+    public function testGetBasic(): void
     {
         $dir = realpath(__DIR__ . '/..');
         $this->assertEquals($dir, Config::get('install_dir'));
     }
 
-    public function testSetBasic()
+    public function testSetBasic(): void
     {
         Config::set('basics', 'first');
         $this->assertEquals('first', $this->config->getValue()['basics']);
     }
 
-    public function testGet()
+    public function testGet(): void
     {
         $this->setConfig(function (&$config) {
             $config['one']['two']['three'] = 'easy';
@@ -61,9 +59,9 @@ class ConfigTest extends TestCase
         $this->assertEquals('easy', Config::get('one.two.three'));
     }
 
-    public function testGetDeviceSetting()
+    public function testGetDeviceSetting(): void
     {
-        $device = array('set' => true, 'null' => null);
+        $device = ['set' => true, 'null' => null];
         $this->setConfig(function (&$config) {
             $config['null'] = 'notnull!';
             $config['noprefix'] = true;
@@ -89,7 +87,7 @@ class ConfigTest extends TestCase
         );
     }
 
-    public function testGetOsSetting()
+    public function testGetOsSetting(): void
     {
         $this->setConfig(function (&$config) {
             $config['os']['nullos']['fancy'] = true;
@@ -100,39 +98,51 @@ class ConfigTest extends TestCase
         $this->assertNull(Config::getOsSetting('nullos', 'unset'), 'Non-existing settings should return null');
         $this->assertFalse(Config::getOsSetting('nullos', 'unset', false), 'Non-existing settings should return $default');
         $this->assertTrue(Config::getOsSetting('nullos', 'fancy'), 'Failed to get setting');
-        $this->assertTrue(Config::getOsSetting('nullos', 'fallback'), 'Failed to fallback to global setting');
+        $this->assertNull(Config::getOsSetting('nullos', 'fallback'), 'Incorrectly loaded global setting');
     }
 
-    public function testGetCombined()
+    public function testGetCombined(): void
     {
         $this->setConfig(function (&$config) {
-            $config['num'] = array('one', 'two');
-            $config['os']['nullos']['num'] = array('two', 'three');
-            $config['assoc'] = array('a' => 'same', 'b' => 'same');
-            $config['os']['nullos']['assoc'] = array('b' => 'different', 'c' => 'still same');
-            $config['os']['nullos']['osset'] = true;
-            $config['gset'] = true;
+            $config['num'] = ['one', 'two'];
+            $config['withprefix']['num'] = ['four', 'five'];
+            $config['os']['nullos']['num'] = ['two', 'three'];
+            $config['assoc'] = ['a' => 'same', 'b' => 'same'];
+            $config['withprefix']['assoc'] = ['a' => 'prefix_same', 'd' => 'prefix_same'];
+            $config['os']['nullos']['assoc'] = ['b' => 'different', 'c' => 'still same'];
+            $config['os']['nullos']['osset'] = 'ossetting';
+            $config['gset'] = 'fallbackone';
+            $config['withprefix']['gset'] = 'fallbacktwo';
         });
 
-        $this->assertTrue(Config::getCombined('nullos', 'non-existent', true), 'Did not return default value on non-existent key');
-        $this->assertTrue(Config::getCombined('nullos', 'osset', false), 'Did not return OS value when global value is not set');
-        $this->assertTrue(Config::getCombined('nullos', 'gset', false), 'Did not return global value when OS value is not set');
+        $this->assertSame(['default'], Config::getCombined('nullos', 'non-existent', '', ['default']), 'Did not return default value on non-existent key');
+        $this->assertSame(['ossetting'], Config::getCombined('nullos', 'osset', '', ['default']), 'Did not return OS value when global value is not set');
+        $this->assertSame(['fallbackone'], Config::getCombined('nullos', 'gset', '', ['default']), 'Did not return global value when OS value is not set');
+        $this->assertSame(['default'], Config::getCombined('nullos', 'non-existent', 'withprefix.', ['default']), 'Did not return default value on non-existent key');
+        $this->assertSame(['ossetting'], Config::getCombined('nullos', 'osset', 'withprefix.', ['default']), 'Did not return OS value when global value is not set');
+        $this->assertSame(['fallbacktwo'], Config::getCombined('nullos', 'gset', 'withprefix.', ['default']), 'Did not return global value when OS value is not set');
 
         $combined = Config::getCombined('nullos', 'num');
         sort($combined);
-        $this->assertEquals(array('one', 'three', 'two'), $combined);
+        $this->assertEquals(['one', 'three', 'two'], $combined);
 
-        $this->assertSame(array('a' => 'same', 'b' => 'different', 'c' => 'still same'), Config::getCombined('nullos', 'assoc'));
+        $combined = Config::getCombined('nullos', 'num', 'withprefix.');
+        sort($combined);
+        $this->assertEquals(['five', 'four', 'three', 'two'], $combined);
+
+        $this->assertSame(['a' => 'same', 'b' => 'different', 'c' => 'still same'], Config::getCombined('nullos', 'assoc'));
+        // should associative not ignore same values (d=>prefix_same)?  are associative arrays actually used?
+        $this->assertSame(['a' => 'prefix_same', 'b' => 'different', 'c' => 'still same'], Config::getCombined('nullos', 'assoc', 'withprefix.'));
     }
 
-    public function testSet()
+    public function testSet(): void
     {
         Config::set('you.and.me', "I'll be there");
 
         $this->assertEquals("I'll be there", $this->config->getValue()['you']['and']['me']);
     }
 
-    public function testSetPersist()
+    public function testSetPersist(): void
     {
         $this->dbSetUp();
 
@@ -150,7 +160,7 @@ class ConfigTest extends TestCase
         $this->dbTearDown();
     }
 
-    public function testHas()
+    public function testHas(): void
     {
         Config::set('long.key.setting', 'no one cares');
         Config::set('null', null);
@@ -164,35 +174,35 @@ class ConfigTest extends TestCase
         $this->assertFalse(Config::has('off.the'), 'Config:has() should not modify the config');
     }
 
-    public function testGetNonExistent()
+    public function testGetNonExistent(): void
     {
         $this->assertNull(Config::get('There.is.no.way.this.is.a.key'));
         $this->assertFalse(Config::has('There.is.no'));  // should not add kes when getting
     }
 
-    public function testGetNonExistentNested()
+    public function testGetNonExistentNested(): void
     {
         $this->assertNull(Config::get('cheese.and.bologna'));
     }
 
-
-    public function testGetSubtree()
+    public function testGetSubtree(): void
     {
         Config::set('words.top', 'August');
         Config::set('words.mid', 'And Everything');
         Config::set('words.bot', 'After');
-        $expected = array(
+        $expected = [
             'top' => 'August',
             'mid' => 'And Everything',
-            'bot' => 'After'
-        );
+            'bot' => 'After',
+        ];
 
         $this->assertEquals($expected, Config::get('words'));
     }
 
     /**
      * Pass an anonymous function which will be passed the config variable to modify before it is set
-     * @param callable $function
+     *
+     * @param  callable  $function
      */
     private function setConfig($function)
     {
@@ -201,7 +211,7 @@ class ConfigTest extends TestCase
         $this->config->setValue($config);
     }
 
-    public function testForget()
+    public function testForget(): void
     {
         Config::set('forget.me', 'now');
         $this->assertTrue(Config::has('forget.me'));
@@ -210,7 +220,7 @@ class ConfigTest extends TestCase
         $this->assertFalse(Config::has('forget.me'));
     }
 
-    public function testForgetSubtree()
+    public function testForgetSubtree(): void
     {
         Config::set('forget.me.sub', 'yep');
         $this->assertTrue(Config::has('forget.me.sub'));

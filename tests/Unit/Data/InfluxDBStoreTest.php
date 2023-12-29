@@ -14,10 +14,10 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
- * @package    LibreNMS
- * @link       http://librenms.org
+ * @link       https://www.librenms.org
+ *
  * @copyright  2018 Tony Murray
  * @author     Tony Murray <murraytony@gmail.com>
  */
@@ -34,7 +34,7 @@ use LibreNMS\Tests\TestCase;
  */
 class InfluxDBStoreTest extends TestCase
 {
-    public function testBadSettings()
+    public function testBadSettings(): void
     {
         Config::set('influxdb.host', '');
         Config::set('influxdb.port', 'abc');
@@ -45,7 +45,7 @@ class InfluxDBStoreTest extends TestCase
         $influx->put(['hostname' => 'test'], 'fake', [], ['one' => 1]);
     }
 
-    public function testSimpleWrite()
+    public function testSimpleWrite(): void
     {
         // Create a mock of the Random Interface
         $mock = \Mockery::mock(\InfluxDB\Database::class);
@@ -56,7 +56,7 @@ class InfluxDBStoreTest extends TestCase
         $device = ['hostname' => 'testhost'];
         $measurement = 'testmeasure';
         $tags = ['ifName' => 'testifname', 'type' => 'testtype'];
-        $fields = ['ifIn' => 234234, 'ifOut' => 53453];
+        $fields = ['ifIn' => 234234.0, 'ifOut' => 53453.0];
 
         $expected = [new Point($measurement, null, ['hostname' => $device['hostname']] + $tags, $fields)];
 

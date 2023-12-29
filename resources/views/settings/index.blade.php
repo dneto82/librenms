@@ -1,9 +1,9 @@
 @extends('layouts.librenmsv1')
 
-@section('title', __('Settings'))
+@section('title', __('settings.title'))
 
 @section('content')
-    <div class="container">
+    <div class="container-fluid">
         <div id="app">
             <librenms-settings
                 prefix="{{ url('settings') }}"
@@ -16,7 +16,7 @@
 @endsection
 
 @push('styles')
-    <link href="{{ asset(mix('/css/app.css')) }}" rel="stylesheet">
+    <link href="{{ asset(mix('/css/vendor.css')) }}" rel="stylesheet">
 @endpush
 
 @push('scripts')

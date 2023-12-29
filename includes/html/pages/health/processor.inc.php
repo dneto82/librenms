@@ -10,12 +10,12 @@
  *
  * @package    LibreNMS
  * @subpackage webui
- * @link       http://librenms.org
+ * @link       https://www.librenms.org
  * @copyright  2017 LibreNMS
  * @author     LibreNMS Contributors
 */
 
-$pagetitle[] = "Health :: Processor";
+$pagetitle[] = 'Health :: Processor';
 ?>
 
 <div class="panel panel-default panel-condensed">
@@ -51,7 +51,7 @@ $pagetitle[] = "Health :: Processor";
         {
             return {
                 id: "processor",
-                view: '<?php echo $vars['view']; ?>'
+                view: '<?php echo htmlspecialchars($vars['view']); ?>'
             };
         },
         url: "ajax_table.php"

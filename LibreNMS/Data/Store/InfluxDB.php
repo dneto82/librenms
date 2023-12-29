@@ -15,10 +15,10 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
- * @package    LibreNMS
- * @link       http://librenms.org
+ * @link       https://www.librenms.org
+ *
  * @copyright  2020 Tony Murray
  * @copyright  2014 Neil Lathwood <https://github.com/laf/ http://www.lathwood.co.uk/fa>
  * @author     Tony Murray <murraytony@gmail.com>
@@ -26,25 +26,26 @@
 
 namespace LibreNMS\Data\Store;
 
+use App\Polling\Measure\Measurement;
 use InfluxDB\Client;
+use InfluxDB\Database;
 use InfluxDB\Driver\UDP;
 use LibreNMS\Config;
-use LibreNMS\Data\Measure\Measurement;
 use Log;
 
 class InfluxDB extends BaseDatastore
 {
-    /** @var \InfluxDB\Database $connection */
+    /** @var \InfluxDB\Database */
     private $connection;
 
-    public function __construct(\InfluxDB\Database $influx)
+    public function __construct(Database $influx)
     {
         parent::__construct();
         $this->connection = $influx;
 
         // if the database doesn't exist, create it.
         try {
-            if (!$influx->exists()) {
+            if (! $influx->exists()) {
                 $influx->create();
             }
         } catch (\Exception $e) {
@@ -71,11 +72,11 @@ class InfluxDB extends BaseDatastore
      *   rrd_oldname array|string: old rrd filename to rename, will be processed with rrd_name()
      *   rrd_step             int: rrd step, defaults to 300
      *
-     * @param array $device
-     * @param string $measurement Name of this measurement
-     * @param array $tags tags for the data (or to control rrdtool)
-     * @param array|mixed $fields The data to update in an associative array, the order must be consistent with rrd_def,
-     *                            single values are allowed and will be paired with $measurement
+     * @param  array  $device
+     * @param  string  $measurement  Name of this measurement
+     * @param  array  $tags  tags for the data (or to control rrdtool)
+     * @param  array|mixed  $fields  The data to update in an associative array, the order must be consistent with rrd_def,
+     *                               single values are allowed and will be paired with $measurement
      */
     public function put($device, $measurement, $tags, $fields)
     {
@@ -83,7 +84,6 @@ class InfluxDB extends BaseDatastore
         $tmp_fields = [];
         $tmp_tags['hostname'] = $device['hostname'];
         foreach ($tags as $k => $v) {
-            $v = preg_replace(['/ /', '/,/', '/=/'], ['\ ', '\,', '\='], $v);
             if (empty($v)) {
                 $v = '_blank_';
             }
@@ -101,6 +101,7 @@ class InfluxDB extends BaseDatastore
 
         if (empty($tmp_fields)) {
             Log::warning('All fields empty, skipping update', ['orig_fields' => $fields]);
+
             return;
         }
 
@@ -117,12 +118,12 @@ class InfluxDB extends BaseDatastore
                     null, // the measurement value
                     $tmp_tags,
                     $tmp_fields // optional additional fields
-                )
+                ),
             ];
 
             $this->connection->writePoints($points);
             $this->recordStatistic($stat->end());
-        } catch (\Exception $e) {
+        } catch (\InfluxDB\Exception $e) {
             Log::error('InfluxDB exception: ' . $e->getMessage());
             Log::debug($e->getTraceAsString());
         }
@@ -160,18 +161,10 @@ class InfluxDB extends BaseDatastore
          * therefore may cause breakages on inserts.
          * Just setting every number to a float gets around this, but may introduce
          * inefficiencies.
-         * I've left the detection statement in there for a possible change in future,
-         * but currently everything just gets set to a float.
          */
 
         if (is_numeric($data)) {
-            // If it is an Integer
-            if (ctype_digit($data)) {
-                return floatval($data);
-                // Else it is a float
-            } else {
-                return floatval($data);
-            }
+            return floatval($data);
         }
 
         return $data === 'U' ? null : $data;
@@ -180,7 +173,7 @@ class InfluxDB extends BaseDatastore
     /**
      * Checks if the datastore wants rrdtags to be sent when issuing put()
      *
-     * @return boolean
+     * @return bool
      */
     public function wantsRrdTags()
     {

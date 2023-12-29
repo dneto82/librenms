@@ -15,10 +15,10 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
- * @package    LibreNMS
- * @link       http://librenms.org
+ * @link       https://www.librenms.org
+ *
  * @copyright  2018 Tony Murray
  * @author     Tony Murray <murraytony@gmail.com>
  */
@@ -26,6 +26,7 @@
 namespace LibreNMS\Util;
 
 use App\Models\Device;
+use LibreNMS\Config;
 
 class Rewrite
 {
@@ -55,6 +56,29 @@ class Rewrite
         }
 
         return $type;
+    }
+
+    public static function shortenIfType($type)
+    {
+        return str_ireplace(
+            [
+                'FastEthernet',
+                'TenGigabitEthernet',
+                'GigabitEthernet',
+                'Port-Channel',
+                'Ethernet',
+                'Bundle-Ether',
+            ],
+            [
+                'Fa',
+                'Te',
+                'Gi',
+                'Po',
+                'Eth',
+                'BE',
+            ],
+            $type
+        );
     }
 
     public static function normalizeIfName($name)
@@ -112,100 +136,78 @@ class Rewrite
     }
 
     /**
-     * Reformat a mac stored in the DB (only hex) to a nice readable format
-     *
-     * @param $mac
-     * @return string
-     */
-    public static function readableMac($mac)
-    {
-        return rtrim(chunk_split($mac, 2, ':'), ':');
-    }
-
-    /**
-     * Reformat hex MAC as oid MAC (dotted-decimal)
-     *
-     * 00:12:34:AB:CD:EF becomes 0.18.52.171.205.239
-     * 0:12:34:AB:CD:EF  becomes 0.18.52.171.205.239
-     * 00:02:04:0B:0D:0F becomes 0.2.4.11.13.239
-     * 0:2:4:B:D:F       becomes 0.2.4.11.13.15
-     *
-     * @param string $mac
-     * @return string oid representation of a MAC address
-     */
-    public static function oidMac($mac)
-    {
-        return implode('.', array_map('hexdec', explode(':', $mac)));
-    }
-
-    /**
-     * Reformat Hex MAC with delimiters to Hex String without delimiters
-     *
-     * Assumes the MAC address is well-formed and in a common format.
-     * 00:12:34:ab:cd:ef becomes 001234abcdef
-     * 00:12:34:AB:CD:EF becomes 001234ABCDEF
-     * 0:12:34:AB:CD:EF  becomes 001234ABCDEF
-     * 00-12-34-AB-CD-EF becomes 001234ABCDEF
-     * 001234-ABCDEF     becomes 001234ABCDEF
-     * 0012.34AB.CDEF    becomes 001234ABCDEF
-     * 00:02:04:0B:0D:0F becomes 0002040B0D0F
-     * 0:2:4:B:D:F       becomes 0002040B0D0F
-     *
-     * @param string $mac hexadecimal MAC address with or without common delimiters
-     * @return string undelimited hexadecimal MAC address
-     */
-    public static function macToHex($mac)
-    {
-        $mac_array = explode(':', str_replace(['-','.'], ':', $mac));
-        $mac_padding = array_fill(0, count($mac_array), 12/count($mac_array));
-
-        return implode(array_map('zeropad', $mac_array, $mac_padding));
-    }
-
-    /**
      * Make Cisco hardware human readable
      *
-     * @param Device $device
-     * @param bool $short
+     * @param  Device  $device
+     * @param  bool  $short
      * @return string
      */
     public static function ciscoHardware(&$device, $short = false)
     {
-        if ($device['os'] == "ios") {
+        if ($device['os'] == 'ios') {
             if ($device['hardware']) {
-                if (preg_match("/^WS-C([A-Za-z0-9]+)/", $device['hardware'], $matches)) {
-                    if (!$short) {
-                        $device['hardware'] = "Catalyst " . $matches[1] . " (" . $device['hardware'] . ")";
+                if (preg_match('/^WS-C([A-Za-z0-9]+)/', $device['hardware'], $matches)) {
+                    if (! $short) {
+                        $device['hardware'] = 'Catalyst ' . $matches[1] . ' (' . $device['hardware'] . ')';
                     } else {
-                        $device['hardware'] = "Catalyst " . $matches[1];
+                        $device['hardware'] = 'Catalyst ' . $matches[1];
                     }
-                } elseif (preg_match("/^CISCO([0-9]+)(.*)/", $device['hardware'], $matches)) {
-                    if (!$short && $matches[2]) {
-                        $device['hardware'] = "Cisco " . $matches[1] . " (" . $device['hardware'] . ")";
+                } elseif (preg_match('/^CISCO([0-9]+)(.*)/', $device['hardware'], $matches)) {
+                    if (! $short && $matches[2]) {
+                        $device['hardware'] = 'Cisco ' . $matches[1] . ' (' . $device['hardware'] . ')';
                     } else {
-                        $device['hardware'] = "Cisco " . $matches[1];
+                        $device['hardware'] = 'Cisco ' . $matches[1];
                     }
                 }
-            } elseif (preg_match("/Cisco IOS Software, C([A-Za-z0-9]+) Software.*/", $device['sysDescr'], $matches)) {
-                $device['hardware'] = "Catalyst " . $matches[1];
-            } elseif (preg_match("/Cisco IOS Software, ([0-9]+) Software.*/", $device['sysDescr'], $matches)) {
-                $device['hardware'] = "Cisco " . $matches[1];
+            } elseif (preg_match('/Cisco IOS Software, C([A-Za-z0-9]+) Software.*/', $device['sysDescr'], $matches)) {
+                $device['hardware'] = 'Catalyst ' . $matches[1];
+            } elseif (preg_match('/Cisco IOS Software, ([0-9]+) Software.*/', $device['sysDescr'], $matches)) {
+                $device['hardware'] = 'Cisco ' . $matches[1];
             }
         }
 
-        if ($device['os'] == "iosxe") {
+        if ($device['os'] == 'iosxe') {
             if ($device['hardware']) {
-                if (preg_match('/CAT9K/', $device['sysDescr'], $matches) && preg_match("/^C(9[A-Za-z0-9]+)/", $device['hardware'], $matches2)) {
-                    if (!$short) {
-                        $device['hardware'] = "Catalyst " . $matches2[1] . " (" . $device['hardware'] . ")";
+                if (preg_match('/CAT9K/', $device['sysDescr'], $matches) && preg_match('/^C(9[A-Za-z0-9]+)/', $device['hardware'], $matches2)) {
+                    if (! $short) {
+                        $device['hardware'] = 'Catalyst ' . $matches2[1] . ' (' . $device['hardware'] . ')';
                     } else {
-                        $device['hardware'] = "Catalyst " . $matches2[1];
+                        $device['hardware'] = 'Catalyst ' . $matches2[1];
                     }
                 }
             }
         }
 
         return $device['hardware'];
+    }
+
+    public static function location($location)
+    {
+        $location = str_replace(["\n", '"'], '', $location);
+
+        if (is_array(Config::get('location_map_regex'))) {
+            foreach (Config::get('location_map_regex') as $reg => $val) {
+                if (preg_match($reg, $location)) {
+                    $location = $val;
+                    break;
+                }
+            }
+        }
+
+        if (is_array(Config::get('location_map_regex_sub'))) {
+            foreach (Config::get('location_map_regex_sub') as $reg => $val) {
+                if (preg_match($reg, $location)) {
+                    $location = preg_replace($reg, $val, $location);
+                    break;
+                }
+            }
+        }
+
+        if (Config::has("location_map.$location")) {
+            $location = Config::get("location_map.$location");
+        }
+
+        return $location;
     }
 
     public static function vmwareGuest($guest_id)
@@ -380,5 +382,16 @@ class Rewrite
     public static function zeropad($num, $length = 2)
     {
         return str_pad($num, $length, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * If given input is an IPv6 address, wrap it in [] for use in applications that require it
+     *
+     * @param  string  $ip
+     * @return string|null
+     */
+    public static function addIpv6Brackets($ip): ?string
+    {
+        return IPv6::isValid($ip) ? "[$ip]" : $ip;
     }
 }

@@ -15,10 +15,10 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
- * @package    LibreNMS
- * @link       http://librenms.org
+ * @link       https://www.librenms.org
+ *
  * @copyright  2018 Tony Murray
  * @author     Tony Murray <murraytony@gmail.com>
  */
@@ -26,7 +26,6 @@
 namespace LibreNMS\Tests\Unit\Data;
 
 use Carbon\Carbon;
-use GuzzleHttp\Client;
 use LibreNMS\Data\Store\OpenTSDB;
 use LibreNMS\Tests\TestCase;
 
@@ -37,7 +36,7 @@ class OpenTSDBStoreTest extends TestCase
 {
     protected $timestamp = 990464400;
 
-    public function setUp() : void
+    protected function setUp(): void
     {
         parent::setUp();
 
@@ -45,7 +44,7 @@ class OpenTSDBStoreTest extends TestCase
         Carbon::setTestNow(Carbon::createFromTimestamp($this->timestamp));
     }
 
-    public function tearDown() : void
+    protected function tearDown(): void
     {
         // restore Carbon:now() to normal
         Carbon::setTestNow();
@@ -53,7 +52,7 @@ class OpenTSDBStoreTest extends TestCase
         parent::tearDown();
     }
 
-    public function testSocketConnectError()
+    public function testSocketConnectError(): void
     {
         $mockFactory = \Mockery::mock(\Socket\Raw\Factory::class);
 
@@ -63,7 +62,7 @@ class OpenTSDBStoreTest extends TestCase
         new OpenTSDB($mockFactory);
     }
 
-    public function testSocketWriteError()
+    public function testSocketWriteError(): void
     {
         $mockSocket = \Mockery::mock(\Socket\Raw\Socket::class);
         $opentsdb = $this->mockOpenTSDB($mockSocket);
@@ -74,7 +73,7 @@ class OpenTSDBStoreTest extends TestCase
         $opentsdb->put(['hostname' => 'test'], 'fake', [], ['one' => 1]);
     }
 
-    public function testSimpleWrite()
+    public function testSimpleWrite(): void
     {
         $mockSocket = \Mockery::mock(\Socket\Raw\Socket::class);
         $opentsdb = $this->mockOpenTSDB($mockSocket);
@@ -91,7 +90,7 @@ class OpenTSDBStoreTest extends TestCase
         $opentsdb->put($device, $measurement, $tags, $fields);
     }
 
-    public function testPortWrite()
+    public function testPortWrite(): void
     {
         $mockSocket = \Mockery::mock(\Socket\Raw\Socket::class);
         $opentsdb = $this->mockOpenTSDB($mockSocket);
@@ -109,7 +108,7 @@ class OpenTSDBStoreTest extends TestCase
     }
 
     /**
-     * @param $mockSocket
+     * @param  mixed  $mockSocket
      * @return OpenTSDB
      */
     private function mockOpenTSDB($mockSocket)

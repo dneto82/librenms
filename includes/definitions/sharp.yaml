@@ -6,9 +6,9 @@ icon: sharp
 over:
     - { graph: device_toner, text: Toner }
 discovery:
-    - sysDescr:
-        - 'SHARP MX-'
+    -
+         sysDescr_regex: '/SHARP (BP|MX)-/'
 discovery_modules:
-    toner: true
+    printer-supplies:   true
 poller_modules:
-    toner: true
+    printer-supplies:   true

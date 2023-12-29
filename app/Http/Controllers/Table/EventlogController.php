@@ -15,10 +15,10 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
- * @package    LibreNMS
- * @link       http://librenms.org
+ * @link       https://www.librenms.org
+ *
  * @copyright  2018 Tony Murray
  * @author     Tony Murray <murraytony@gmail.com>
  */
@@ -28,6 +28,7 @@ namespace App\Http\Controllers\Table;
 use App\Models\Eventlog;
 use Carbon\Carbon;
 use LibreNMS\Config;
+use LibreNMS\Enum\Severity;
 use LibreNMS\Util\Url;
 
 class EventlogController extends TableController
@@ -54,10 +55,15 @@ class EventlogController extends TableController
         ];
     }
 
+    protected function sortFields($request)
+    {
+        return ['datetime', 'type', 'device_id', 'message', 'username'];
+    }
+
     /**
      * Defines the base query for this resource
      *
-     * @param \Illuminate\Http\Request $request
+     * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Database\Eloquent\Builder|\Illuminate\Database\Query\Builder
      */
     public function baseQuery($request)
@@ -69,6 +75,9 @@ class EventlogController extends TableController
             });
     }
 
+    /**
+     * @param  Eventlog  $eventlog
+     */
     public function formatItem($eventlog)
     {
         return [
@@ -89,9 +98,18 @@ class EventlogController extends TableController
                     return '<b>' . Url::portLink($port, $port->getShortLabel()) . '</b>';
                 }
             }
+        } elseif ($eventlog->type == 'stp') {
+            return Url::deviceLink($eventlog->device, $eventlog->type, ['tab' => 'stp']);
+        } elseif (in_array($eventlog->type, \App\Models\Sensor::getTypes())) {
+            if (is_numeric($eventlog->reference)) {
+                $sensor = $eventlog->related;
+                if (isset($sensor)) {
+                    return '<b>' . Url::sensorLink($sensor, $sensor->sensor_descr) . '</b>';
+                }
+            }
         }
 
-        return $eventlog->type;
+        return htmlspecialchars($eventlog->type);
     }
 
     private function formatDatetime($eventlog)
@@ -99,31 +117,25 @@ class EventlogController extends TableController
         $output = "<span class='alert-status ";
         $output .= $this->severityLabel($eventlog->severity);
         $output .= " eventlog-status'></span><span style='display:inline;'>";
-        $output .= (new Carbon($eventlog->datetime))->format(Config::get('dateformat.compact'));
-        $output .= "</span>";
+        $output .= (new Carbon($eventlog->datetime))->setTimezone(session('preferences.timezone'))->format(Config::get('dateformat.compact'));
+        $output .= '</span>';
 
         return $output;
     }
 
     /**
-     * @param int $eventlog_severity
+     * @param  Severity  $eventlog_severity
      * @return string $eventlog_severity_icon
      */
     private function severityLabel($eventlog_severity)
     {
-        switch ($eventlog_severity) {
-            case 1:
-                return "label-success"; //OK
-            case 2:
-                return "label-info"; //Informational
-            case 3:
-                return "label-primary"; //Notice
-            case 4:
-                return "label-warning"; //Warning
-            case 5:
-                return "label-danger"; //Critical
-            default:
-                return "label-default"; //Unknown
-        }
-    } // end eventlog_severity
+        return match ($eventlog_severity) {
+            Severity::Ok => 'label-success',
+            Severity::Info => 'label-info',
+            Severity::Notice => 'label-primary',
+            Severity::Warning => 'label-warning',
+            Severity::Error => 'label-danger',
+            default => 'label-default', // Unknown
+        };
+    }
 }

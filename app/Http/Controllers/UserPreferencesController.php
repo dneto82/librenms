@@ -15,10 +15,10 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
- * @package    LibreNMS
- * @link       http://librenms.org
+ * @link       https://www.librenms.org
+ *
  * @copyright  2019 Tony Murray
  * @author     Tony Murray <murraytony@gmail.com>
  */
@@ -28,8 +28,8 @@ namespace App\Http\Controllers;
 use App\Models\Dashboard;
 use App\Models\Device;
 use App\Models\UserPref;
-use Auth;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use LibreNMS\Authentication\LegacyAuth;
 use LibreNMS\Authentication\TwoFactor;
@@ -39,7 +39,7 @@ use Session;
 
 class UserPreferencesController extends Controller
 {
-    private $cachedPreferences = ['locale', 'site_style'];
+    private $cachedPreferences = ['locale', 'site_style', 'timezone'];
 
     public function __construct()
     {
@@ -49,8 +49,8 @@ class UserPreferencesController extends Controller
     /**
      * Display a listing of the resource.
      *
-     * @param \Illuminate\Http\Request $request
-     * @return \Illuminate\Http\Response
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\View\View
      */
     public function index(Request $request)
     {
@@ -73,7 +73,9 @@ class UserPreferencesController extends Controller
             'site_style' => UserPref::getPref($user, 'site_style'),
             'site_style_default' => $styles[$default_style] ?? $default_style,
             'site_styles' => $styles,
-
+            'timezone' => UserPref::getPref($user, 'timezone'),
+            'hide_dashboard_editor' => UserPref::getPref($user, 'hide_dashboard_editor') ?? 0,
+            'global_search_ctrlf_focus' => UserPref::getPref($user, 'global_search_ctrlf_focus'),
         ];
 
         if (Config::get('twofactor')) {
@@ -84,7 +86,7 @@ class UserPreferencesController extends Controller
             $data['twofactor'] = $twofactor;
         }
 
-        if (!$user->hasGlobalRead()) {
+        if (! $user->hasGlobalRead()) {
             $data['devices'] = Device::hasAccess($user)->get();
         }
 
@@ -94,8 +96,8 @@ class UserPreferencesController extends Controller
     /**
      * Store a newly created resource in storage.
      *
-     * @param \Illuminate\Http\Request $request
-     * @return \Illuminate\Http\Response
+     * @param  \Illuminate\Http\Request  $request
+     * @return \Illuminate\Http\JsonResponse
      */
     public function store(Request $request)
     {
@@ -110,6 +112,12 @@ class UserPreferencesController extends Controller
                 'required',
                 Rule::in(array_merge(['default'], array_keys($this->getValidStyles()))),
             ],
+            'timezone' => [
+                'required',
+                Rule::in(array_merge(['default'], timezone_identifiers_list())),
+            ],
+            'hide_dashboard_editor' => 'required|integer',
+            'global_search_ctrlf_focus' => 'required|integer',
         ];
 
         $this->validate($request, [
@@ -124,19 +132,19 @@ class UserPreferencesController extends Controller
 
     private function getValidLocales()
     {
-        return array_reduce(glob(resource_path('lang') . '/*', GLOB_ONLYDIR), function ($locales, $locale) {
-            {
-                $locale = basename($locale);
-                $lang = __('preferences.lang', [], $locale);
-                $locales[$locale] = ($lang == 'preferences.lang' ? $locale : $lang);
-                return $locales;
-            }
+        return array_reduce(glob(base_path('lang') . '/*', GLOB_ONLYDIR), function ($locales, $locale) {
+            $locale = basename($locale);
+            $lang = __('preferences.lang', [], $locale);
+            $locales[$locale] = ($lang == 'preferences.lang' ? $locale : $lang);
+
+            return $locales;
         }, []);
     }
 
     private function getValidStyles()
     {
         $definitions = new DynamicConfig();
+
         return $definitions->get('site_style')->getOptions();
     }
 

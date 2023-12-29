@@ -7,10 +7,10 @@ use LibreNMS\Exceptions\AuthenticationException;
 
 class HttpAuthAuthorizer extends MysqlAuthorizer
 {
-    protected static $HAS_AUTH_USERMANAGEMENT = 1;
-    protected static $CAN_UPDATE_USER = 1;
-    protected static $CAN_UPDATE_PASSWORDS = 0;
-    protected static $AUTH_IS_EXTERNAL = 1;
+    protected static $HAS_AUTH_USERMANAGEMENT = true;
+    protected static $CAN_UPDATE_USER = true;
+    protected static $CAN_UPDATE_PASSWORDS = false;
+    protected static $AUTH_IS_EXTERNAL = true;
 
     public function authenticate($credentials)
     {
@@ -33,23 +33,6 @@ class HttpAuthAuthorizer extends MysqlAuthorizer
 
         return false;
     }
-
-
-    public function getUserlevel($username)
-    {
-        $user_level = parent::getUserlevel($username);
-
-        if ($user_level) {
-            return $user_level;
-        }
-
-        if (Config::has('http_auth_guest')) {
-            return parent::getUserlevel(Config::get('http_auth_guest'));
-        }
-
-        return 0;
-    }
-
 
     public function getUserid($username)
     {

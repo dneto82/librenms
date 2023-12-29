@@ -4,17 +4,27 @@ namespace App\Models;
 
 use App\Events\UserCreated;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Hash;
 use LibreNMS\Authentication\LegacyAuth;
+use NotificationChannels\WebPush\HasPushSubscriptions;
 use Permissions;
+use Silber\Bouncer\BouncerFacade as Bouncer;
+use Silber\Bouncer\Database\HasRolesAndAbilities;
 
+/**
+ * @method static \Database\Factories\UserFactory factory(...$parameters)
+ */
 class User extends Authenticatable
 {
-    use Notifiable;
+    use HasRolesAndAbilities, Notifiable, HasFactory, HasPushSubscriptions;
 
     protected $primaryKey = 'user_id';
-    protected $fillable = ['realname', 'username', 'email', 'level', 'descr', 'can_modify_passwd', 'auth_type', 'auth_id', 'enabled'];
+    protected $fillable = ['realname', 'username', 'email', 'descr', 'can_modify_passwd', 'auth_type', 'auth_id', 'enabled'];
     protected $hidden = ['password', 'remember_token', 'pivot'];
     protected $attributes = [ // default values
         'descr' => '',
@@ -32,38 +42,41 @@ class User extends Authenticatable
         'can_modify_passwd' => 'integer',
     ];
 
+    public function toFlare(): array
+    {
+        return $this->only(['auth_type', 'enabled']);
+    }
+
     // ---- Helper Functions ----
 
     /**
      * Test if this user has global read access
-     * these users have a level of 5, 10 or 11 (demo).
      *
-     * @return boolean
+     * @return bool
      */
     public function hasGlobalRead()
     {
-        return $this->hasGlobalAdmin() || $this->level == 5;
+        return $this->isA('admin', 'global-read');
     }
 
     /**
      * Test if this user has global admin access
-     * these users have a level of 10 or 11 (demo).
      *
-     * @return boolean
+     * @return bool
      */
     public function hasGlobalAdmin()
     {
-        return $this->level >= 10;
+        return $this->isA('admin', 'demo');
     }
 
     /**
      * Test if the User is an admin.
      *
-     * @return boolean
+     * @return bool
      */
     public function isAdmin()
     {
-        return $this->level == 10;
+        return $this->isA('admin');
     }
 
     /**
@@ -73,13 +86,13 @@ class User extends Authenticatable
      */
     public function isDemo()
     {
-        return $this->level == 11;
+        return $this->isA('demo');
     }
 
     /**
      * Check if this user has access to a device
      *
-     * @param Device|int $device can be a device Model or device id
+     * @param  Device|int  $device  can be a device Model or device id
      * @return bool
      */
     public function canAccessDevice($device)
@@ -90,17 +103,31 @@ class User extends Authenticatable
     /**
      * Helper function to hash passwords before setting
      *
-     * @param string $password
+     * @param  string  $password
      */
     public function setPassword($password)
     {
-        $this->attributes['password'] = $password ? password_hash($password, PASSWORD_DEFAULT) : null;
+        $this->attributes['password'] = $password ? Hash::make($password) : null;
+    }
+
+    /**
+     * Set roles and remove extra roles, optionally creating non-existent roles, flush permissions cache for this user if roles changed
+     */
+    public function setRoles(array $roles, bool $create = false): void
+    {
+        if ($roles != $this->getRoles()) {
+            if ($create) {
+                $this->assign($roles);
+            }
+            Bouncer::sync($this)->roles($roles);
+            Bouncer::refresh($this);
+        }
     }
 
     /**
      * Check if the given user can set the password for this user
      *
-     * @param User $user
+     * @param  User  $user
      * @return bool
      */
     public function canSetPassword($user)
@@ -116,13 +143,28 @@ class User extends Authenticatable
         return false;
     }
 
+    /**
+     * Checks if this user has a browser push notification transport configured.
+     *
+     * @return bool
+     */
+    public function hasBrowserPushTransport(): bool
+    {
+        $user_id = \Auth::id();
+
+        return AlertTransport::query()
+            ->where('transport_type', 'browserpush')
+            ->where('transport_config', 'regexp', "\"user\":\"(0|$user_id)\"")
+            ->exists();
+    }
+
     // ---- Query scopes ----
 
     /**
      * This restricts the query to only users that match the current auth method
      * It is not needed when using user_id, but should be used for username and auth_id
      *
-     * @param Builder $query
+     * @param  Builder  $query
      * @return Builder
      */
     public function scopeThisAuth($query)
@@ -137,21 +179,26 @@ class User extends Authenticatable
         });
     }
 
+    public function scopeAdminOnly($query)
+    {
+        $query->whereIs('admin');
+    }
+
     // ---- Accessors/Mutators ----
 
     public function setRealnameAttribute($realname)
     {
-        $this->attributes['realname'] = (string)$realname;
+        $this->attributes['realname'] = (string) $realname;
     }
 
     public function setDescrAttribute($descr)
     {
-        $this->attributes['descr'] = (string)$descr;
+        $this->attributes['descr'] = (string) $descr;
     }
 
     public function setEmailAttribute($email)
     {
-        $this->attributes['email'] = (string)$email;
+        $this->attributes['email'] = (string) $email;
     }
 
     public function setCanModifyPasswdAttribute($modify)
@@ -167,30 +214,41 @@ class User extends Authenticatable
     public function getDevicesAttribute()
     {
         // pseudo relation
-        if (!array_key_exists('devices', $this->relations)) {
+        if (! array_key_exists('devices', $this->relations)) {
             $this->setRelation('devices', $this->devices()->get());
         }
+
         return $this->getRelation('devices');
     }
 
     // ---- Define Relationships ----
 
-    public function apiToken()
+    public function apiTokens(): HasMany
     {
-        return $this->hasOne('App\Models\ApiToken', 'user_id', 'user_id');
+        return $this->hasMany(\App\Models\ApiToken::class, 'user_id', 'user_id');
+    }
+
+    public function bills(): BelongsToMany
+    {
+        return $this->belongsToMany(\App\Models\Bill::class, 'bill_perms', 'user_id', 'bill_id');
     }
 
     public function devices()
     {
         // pseudo relation
-        return Device::query()->when(!$this->hasGlobalRead(), function ($query) {
-            return $query->whereIn('device_id', Permissions::devicesForUser($this));
+        return Device::query()->when(! $this->hasGlobalRead(), function ($query) {
+            return $query->whereIntegerInRaw('device_id', Permissions::devicesForUser($this));
         });
     }
 
-    public function deviceGroups()
+    public function devicesOwned(): BelongsToMany
     {
-        return $this->belongsToMany('App\Models\DeviceGroup', 'devices_group_perms', 'user_id', 'device_group_id');
+        return $this->belongsToMany(\App\Models\Device::class, 'devices_perms', 'user_id', 'device_id');
+    }
+
+    public function deviceGroups(): BelongsToMany
+    {
+        return $this->belongsToMany(\App\Models\DeviceGroup::class, 'devices_group_perms', 'user_id', 'device_group_id');
     }
 
     public function ports()
@@ -199,22 +257,32 @@ class User extends Authenticatable
             return Port::query();
         } else {
             //FIXME we should return all ports for a device if the user has been given access to the whole device.
-            return $this->belongsToMany('App\Models\Port', 'ports_perms', 'user_id', 'port_id');
+            return $this->portsOwned();
         }
     }
 
-    public function dashboards()
+    public function portsOwned(): BelongsToMany
     {
-        return $this->hasMany('App\Models\Dashboard', 'user_id');
+        return $this->belongsToMany(\App\Models\Port::class, 'ports_perms', 'user_id', 'port_id');
     }
 
-    public function preferences()
+    public function dashboards(): HasMany
     {
-        return $this->hasMany('App\Models\UserPref', 'user_id');
+        return $this->hasMany(\App\Models\Dashboard::class, 'user_id');
     }
 
-    public function widgets()
+    public function notificationAttribs(): HasMany
     {
-        return $this->hasMany('App\Models\UserWidget', 'user_id');
+        return $this->hasMany(NotificationAttrib::class, 'user_id');
+    }
+
+    public function preferences(): HasMany
+    {
+        return $this->hasMany(\App\Models\UserPref::class, 'user_id');
+    }
+
+    public function widgets(): HasMany
+    {
+        return $this->hasMany(\App\Models\UserWidget::class, 'user_id');
     }
 }

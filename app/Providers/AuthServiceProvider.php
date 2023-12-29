@@ -2,25 +2,27 @@
 
 namespace App\Providers;
 
-use App\Models\DeviceGroup;
-use App\Models\User;
-use App\Policies\DeviceGroupPolicy;
-use App\Policies\UserPolicy;
 use App\Guards\ApiTokenGuard;
-use Auth;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
+use Silber\Bouncer\BouncerFacade as Bouncer;
 
 class AuthServiceProvider extends ServiceProvider
 {
     /**
      * The policy mappings for the application.
      *
-     * @var array
+     * @var array<class-string, class-string>
      */
     protected $policies = [
-        User::class => UserPolicy::class,
-        DeviceGroup::class => DeviceGroupPolicy::class,
+        \App\Models\User::class => \App\Policies\UserPolicy::class,
+        \App\Models\Dashboard::class => \App\Policies\DashboardPolicy::class,
+        \App\Models\Device::class => \App\Policies\DevicePolicy::class,
+        \App\Models\DeviceGroup::class => \App\Policies\DeviceGroupPolicy::class,
+        \App\Models\PollerCluster::class => \App\Policies\PollerClusterPolicy::class,
+        \App\Models\Port::class => \App\Policies\PortPolicy::class,
+        \App\Models\ServiceTemplate::class => \App\Policies\ServiceTemplatePolicy::class,
     ];
 
     /**
@@ -28,9 +30,9 @@ class AuthServiceProvider extends ServiceProvider
      *
      * @return void
      */
-    public function boot()
+    public function boot(): void
     {
-        $this->registerPolicies();
+        Bouncer::cache();
 
         Auth::provider('legacy', function ($app, array $config) {
             return new LegacyUserProvider();
@@ -43,6 +45,7 @@ class AuthServiceProvider extends ServiceProvider
         Auth::extend('token_driver', function ($app, $name, array $config) {
             $userProvider = $app->make(TokenUserProvider::class);
             $request = $app->make('request');
+
             return new ApiTokenGuard($userProvider, $request);
         });
 

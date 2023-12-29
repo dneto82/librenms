@@ -15,10 +15,10 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
- * @package    LibreNMS
- * @link       http://librenms.org
+ * @link       https://www.librenms.org
+ *
  * @copyright  2018 Tony Murray
  * @author     Tony Murray <murraytony@gmail.com>
  */
@@ -26,6 +26,9 @@
 namespace App\Models;
 
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Support\Facades\Auth;
+use LibreNMS\Enum\Severity;
 
 class Eventlog extends DeviceRelatedModel
 {
@@ -33,19 +36,38 @@ class Eventlog extends DeviceRelatedModel
     protected $primaryKey = 'event_id';
     public $timestamps = false;
     protected $fillable = ['datetime', 'device_id', 'message', 'type', 'reference', 'username', 'severity'];
+    protected $casts = [
+        'severity' => Severity::class,
+    ];
 
     // ---- Helper Functions ----
+    /**
+     * This is used to be able to mock _log()
+     *
+     * @see _log()
+     *
+     * @param  string  $text  message describing the event
+     * @param  Device|int|null  $device  related device
+     * @param  string  $type  brief category for this event. Examples: sensor, state, stp, system, temperature, interface
+     * @param  Severity  $severity  1: ok, 2: info, 3: notice, 4: warning, 5: critical, 0: unknown
+     * @param  int|string|null  $reference  the id of the referenced entity.  Supported types: interface
+     */
+    public static function log($text, $device = null, $type = null, Severity $severity = Severity::Info, $reference = null): void
+    {
+        $model = app()->make(Eventlog::class);
+        $model->_log($text, $device, $type, $severity, $reference);
+    }
 
     /**
      * Log events to the event table
      *
-     * @param string $text message describing the event
-     * @param Device $device related device
-     * @param string $type brief category for this event. Examples: sensor, state, stp, system, temperature, interface
-     * @param int $severity 1: ok, 2: info, 3: notice, 4: warning, 5: critical, 0: unknown
-     * @param int $reference the id of the referenced entity.  Supported types: interface
+     * @param  string  $text
+     * @param  Device|int|null  $device
+     * @param  string  $type
+     * @param  Severity  $severity
+     * @param  int|string|null  $reference
      */
-    public static function log($text, $device = null, $type = null, $severity = 2, $reference = null)
+    public function _log($text, $device = null, $type = null, Severity $severity = Severity::Info, $reference = null): void
     {
         $log = new static([
             'reference' => $reference,
@@ -53,8 +75,12 @@ class Eventlog extends DeviceRelatedModel
             'datetime' => Carbon::now(),
             'severity' => $severity,
             'message' => $text,
-            'username'  => (class_exists('\Auth') && \Auth::check()) ? \Auth::user()->username : '',
+            'username'  => (class_exists('\Auth') && Auth::check()) ? Auth::user()->username : '',
         ]);
+
+        if (is_numeric($device)) {
+            $log->device_id = $device;
+        }
 
         if ($device instanceof Device) {
             $device->eventlogs()->save($log);
@@ -65,7 +91,7 @@ class Eventlog extends DeviceRelatedModel
 
     // ---- Define Relationships ----
 
-    public function related()
+    public function related(): MorphTo
     {
         return $this->morphTo('related', 'type', 'reference');
     }

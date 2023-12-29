@@ -15,10 +15,10 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
- * @package    LibreNMS
- * @link       http://librenms.org
+ * @link       https://www.librenms.org
+ *
  * @copyright  2018 Tony Murray
  * @author     Tony Murray <murraytony@gmail.com>
  */
@@ -33,8 +33,9 @@ class LocationController extends TableController
     /**
      * Defines search fields will be searched in order
      *
-     * @param \Illuminate\Http\Request $request
+     * @param  \Illuminate\Http\Request  $request
      * @return array
+     *
      * @SuppressWarnings(PHPMD.UnusedFormalParameter)
      */
     public function searchFields($request)
@@ -42,10 +43,15 @@ class LocationController extends TableController
         return ['location'];
     }
 
+    protected function sortFields($request)
+    {
+        return ['location', 'devices', 'down'];
+    }
+
     /**
      * Defines the base query for this resource
      *
-     * @param \Illuminate\Http\Request $request
+     * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Database\Eloquent\Builder|\Illuminate\Database\Query\Builder
      */
     public function baseQuery($request)
@@ -66,21 +72,18 @@ class LocationController extends TableController
     }
 
     /**
-     * @param Location $location
+     * @param  Location  $location
      * @return array|\Illuminate\Database\Eloquent\Model|\Illuminate\Support\Collection
      */
     public function formatItem($location)
     {
         return [
             'id' => $location->id,
-            'location' => $location->location,
+            'location' => htmlspecialchars($location->location),
             'lat' => $location->lat,
             'lng' => $location->lng,
             'down' => $location->devices()->isDown()->count(),
             'devices' => $location->devices()->count(),
-            'network' => $location->devices()->where('type', 'network')->count(),
-            'servers' => $location->devices()->where('type', 'server')->count(),
-            'firewalls' => $location->devices()->where('type', 'firewall')->count(),
         ];
     }
 
@@ -95,21 +98,6 @@ class LocationController extends TableController
                 return function ($query) {
                     $query->on('devices.location_id', 'locations.id');
                     (new Device)->scopeIsDown($query);
-                };
-            case 'network':
-                return function ($query) {
-                    $query->on('devices.location_id', 'locations.id')
-                        ->where('devices.type', 'network');
-                };
-            case 'servers':
-                return function ($query) {
-                    $query->on('devices.location_id', 'locations.id')
-                        ->where('devices.type', 'server');
-                };
-            case 'firewalls':
-                return function ($query) {
-                    $query->on('devices.location_id', 'locations.id')
-                        ->where('devices.type', 'firewall');
                 };
             default:
                 return null;

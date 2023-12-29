@@ -7,7 +7,7 @@ ifXmcbc: true
 ifname: true
 over:
     - { graph: device_processor, text: 'Processor Usage' }
-    - { graph: device_ucd_memory, text: 'Memory Usage' }
+    - { graph: device_mempool, text: 'Memory Usage' }
     - { graph: device_storage, text: 'Storage Usage' }
 poller_modules:
     bgp-peers: false
@@ -17,12 +17,10 @@ discovery_modules:
     applications: true
     bgp-peers: false
     stp: false
-    vmware-vminfo: false
-    libvirt-vminfo: false
 processor_stacked: true
 discovery:
     -
-      sysObjectID:
+        sysObjectID:
             - .1.3.6.1.4.1.8072.3.2.10
-      sysDescr_regex:
+        sysDescr_regex:
             - '/ PVE|pve /'

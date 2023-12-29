@@ -15,12 +15,13 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
- * @package    LibreNMS
- * @link       http://librenms.org
+ * @link       https://www.librenms.org
+ *
  * @copyright  2018 Ryan Finney
  * @author     https://github.com/theherodied/
+ *
  * @contributer f0o, sdef2
  * Thanks to F0o <f0o@devilcode.org> for creating the Slack transport which is the majority of this code.
  * Thanks to sdef2 for figuring out the differences needed to make Discord work.
@@ -29,51 +30,91 @@
 namespace LibreNMS\Alert\Transport;
 
 use LibreNMS\Alert\Transport;
+use LibreNMS\Exceptions\AlertTransportDeliveryException;
+use LibreNMS\Util\Http;
 
 class Discord extends Transport
 {
-    public function deliverAlert($obj, $opts)
-    {
-        $discord_opts = [
-            'url' => $this->config['url'],
-            'options' => $this->parseUserOptions($this->config['options']),
-        ];
+    public const DEFAULT_EMBEDS = 'hostname,name,timestamp,severity';
+    private array $embedFieldTranslations = [
+        'name' => 'Rule Name',
+    ];
 
-        return $this->contactDiscord($obj, $discord_opts);
-    }
-
-    public function contactDiscord($obj, $discord_opts)
+    public function deliverAlert(array $alert_data): bool
     {
-        $host          = $discord_opts['url'];
-        $curl          = curl_init();
-        $discord_msg   = strip_tags($obj['msg']);
-        $data          = [
-            'content' => "". $obj['title'] ."\n" . $discord_msg
+        $added_fields = $this->parseUserOptions($this->config['options']);
+
+        $discord_title = '#' . $alert_data['uid'] . ' ' . $alert_data['title'];
+        $discord_msg = $alert_data['msg'];
+        $color = hexdec(preg_replace('/[^\dA-Fa-f]/', '', self::getColorForState($alert_data['state'])));
+
+        // Special handling for the elapsed text in the footer if the elapsed is not set.
+        $footer_text = $alert_data['elapsed'] ? 'alert took ' . $alert_data['elapsed'] : '';
+
+        $data = [
+            'embeds' => [
+                [
+                    'title' => $discord_title,
+                    'color' => $color,
+                    'description' => $discord_msg,
+                    'fields' => $this->createDiscordFields($alert_data),
+                    'footer' => [
+                        'text' => $footer_text,
+                    ],
+                ],
+            ],
         ];
-        if (!empty($discord_opts['options'])) {
-            $data = array_merge($data, $discord_opts['options']);
+        if (! empty($added_fields)) {
+            $data = array_merge($data, $added_fields);
         }
 
-        $alert_message = json_encode($data);
-        curl_setopt($curl, CURLOPT_HTTPHEADER, array('Content-Type: application/json'));
-        set_curl_proxy($curl);
-        curl_setopt($curl, CURLOPT_URL, $host);
-        curl_setopt($curl, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($curl, CURLOPT_POST, true);
-        curl_setopt($curl, CURLOPT_POSTFIELDS, $alert_message);
+        $data = $this->embedGraphs($data);
 
-        $ret  = curl_exec($curl);
-        $code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
-        if ($code != 204) {
-            var_dump("API '$host' returned Error"); //FIXME: propper debuging
-            var_dump("Params: " . $alert_message); //FIXME: propper debuging
-            var_dump("Return: " . $ret); //FIXME: propper debuging
-            return 'HTTP Status code ' . $code;
+        // remove all remaining HTML tags
+        $data['embeds'][0]['description'] = strip_tags($data['embeds'][0]['description']);
+
+        $res = Http::client()->post($this->config['url'], $data);
+
+        if ($res->successful()) {
+            return true;
         }
-        return true;
+
+        throw new AlertTransportDeliveryException($alert_data, $res->status(), $res->body(), $discord_msg, $data);
     }
 
-    public static function configTemplate()
+    private function embedGraphs(array $data): array
+    {
+        $count = 1;
+        $data['embeds'][0]['description'] = preg_replace_callback('#<img class="librenms-graph" src="(.*?)" />#', function ($match) use (&$data, &$count) {
+            $data['embeds'][] = [
+                'image' => [
+                    'url' => $match[1],
+                ],
+            ];
+
+            return '[Image ' . ($count++) . ']';
+        }, $data['embeds'][0]['description']);
+
+        return $data;
+    }
+
+    public function createDiscordFields(array $alert_data): array
+    {
+        $result = [];
+
+        $fields = explode(',', $this->config['discord-embed-fields'] ?? self::DEFAULT_EMBEDS);
+
+        foreach ($fields as $field) {
+            $result[] = [
+                'name' => $this->embedFieldTranslations[$field] ?? ucfirst($field),
+                'value' => $alert_data[$field] ?? 'Error: Invalid Field',
+            ];
+        }
+
+        return $result;
+    }
+
+    public static function configTemplate(): array
     {
         return [
             'config' => [
@@ -88,11 +129,18 @@ class Discord extends Transport
                     'name' => 'options',
                     'descr' => 'Enter the config options (format: option=value separated by new lines)',
                     'type' => 'textarea',
-                ]
+                ],
+                [
+                    'title' => 'Fields to embed in the alert',
+                    'name' => 'discord-embed-fields',
+                    'descr' => 'Comma seperated list of fields from the alert to attach to the Discord message',
+                    'type' => 'text',
+                    'default' => self::DEFAULT_EMBEDS,
+                ],
             ],
             'validation' => [
                 'url' => 'required|url',
-            ]
+            ],
         ];
     }
 }

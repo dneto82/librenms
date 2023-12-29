@@ -1,10 +1,37 @@
 mib: FOUNDRY-SN-AGENT-MIB:FOUNDRY-SN-SWITCH-GROUP-MIB:FOUNDRY-SN-STACKING-MIB
 modules:
+    mempools:
+        pre-cache:
+            oids:
+                - FOUNDRY-SN-AGENT-MIB::snAgentBrdMainBrdDescription
+        data:
+#            -
+#                total: FOUNDRY-SN-AGENT-MIB::snAgGblDynMemTotal
+#                free: FOUNDRY-SN-AGENT-MIB::snAgGblDynMemFree
+#                type: ironware-dyn
+#                descr: 'Dynamic Memory'
+            -
+                total: FOUNDRY-SN-AGENT-MIB::snAgSystemDRAMTotal
+                free: FOUNDRY-SN-AGENT-MIB::snAgSystemDRAMFree
+                descr: 'System Memory'
+                type: ironware-system
+            -
+                total: FOUNDRY-SN-AGENT-MIB::snAgentBrdMemoryTotal
+                percent_used: FOUNDRY-SN-AGENT-MIB::snAgentBrdMemoryUtil100thPercent
+                type: ironware-dyn
+                descr: '{{ FOUNDRY-SN-AGENT-MIB::snAgentBrdMainBrdDescription }}'
+    os:
+        hardware_mib: FOUNDRY-SN-ROOT-MIB
+        sysDescr_regex: '/IronWare Version V(?<version>.*) Compiled on/'
+        serial: FOUNDRY-SN-AGENT-MIB::snChasSerNum.0
+        version: FOUNDRY-SN-AGENT-MIB::snAgImgVer.0
+#        version: FOUNDRY-SN-AGENT-MIB::snAgBuildVer.0
     sensors:
         pre-cache:
             data:
-                - oid:
-                    - ifDescr
+                -
+                    oid:
+                        - ifDescr
         dbm:
             data:
                 -
@@ -92,9 +119,9 @@ modules:
                     index: 'snStackingOperUnitState.{{ $index }}'
                     skip_values:
                         -
-                          oid: snStackingGlobalConfigState.0
-                          op: '!='
-                          value: 1
+                            oid: snStackingGlobalConfigState.0
+                            op: '!='
+                            value: 1
                     group: Stacking Status
                     state_name: snStackingOperUnitState
                     states:
@@ -110,13 +137,13 @@ modules:
                     index: 'snStackingOperUnitStackPort1State.{{ $index }}'
                     skip_values:
                         -
-                          oid: snStackingGlobalConfigState.0
-                          op: '!='
-                          value: 1
+                            oid: snStackingGlobalConfigState.0
+                            op: '!='
+                            value: 1
                         -
-                          oid: snStackingOperUnitStackPort1
-                          op: '='
-                          value: 0
+                            oid: snStackingOperUnitStackPort1
+                            op: '='
+                            value: 0
                     group: Stacking Status
                     state_name: snStackingOperUnitStackPortState
                     states:
@@ -131,13 +158,13 @@ modules:
                     index: 'snStackingOperUnitStackPort2State.{{ $index }}'
                     skip_values:
                         -
-                          oid: snStackingGlobalConfigState.0
-                          op: '!='
-                          value: 1
+                            oid: snStackingGlobalConfigState.0
+                            op: '!='
+                            value: 1
                         -
-                          oid: snStackingOperUnitStackPort2
-                          op: '='
-                          value: 0
+                            oid: snStackingOperUnitStackPort2
+                            op: '='
+                            value: 0
                     group: Stacking Status
                     state_name: snStackingOperUnitStackPortState
                     states:

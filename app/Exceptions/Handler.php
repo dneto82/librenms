@@ -2,16 +2,13 @@
 
 namespace App\Exceptions;
 
-use Exception;
-use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
+use Throwable;
 
 class Handler extends ExceptionHandler
 {
     /**
-     * A list of the exception types that should not be reported.
-     *
-     * @var array
+     * A list of the exception types that are not reported.
      */
     protected $dontReport = [
         \Illuminate\Auth\AuthenticationException::class,
@@ -20,10 +17,11 @@ class Handler extends ExceptionHandler
         \Illuminate\Database\Eloquent\ModelNotFoundException::class,
         \Illuminate\Session\TokenMismatchException::class,
         \Illuminate\Validation\ValidationException::class,
+        \Symfony\Component\Console\Exception\CommandNotFoundException::class,
     ];
 
     /**
-     * A list of the exceptions that can be upgraded. Checked in order.
+     * A list of the inputs that are never flashed for validation exceptions.
      *
      * @var array
      */
@@ -31,14 +29,17 @@ class Handler extends ExceptionHandler
         \LibreNMS\Exceptions\FilePermissionsException::class,
         \LibreNMS\Exceptions\DatabaseConnectException::class,
         \LibreNMS\Exceptions\DuskUnsafeException::class,
+        \LibreNMS\Exceptions\UnserializableRouteCache::class,
+        \LibreNMS\Exceptions\MaximumExecutionTimeExceeded::class,
+        \LibreNMS\Exceptions\DatabaseInconsistentException::class,
     ];
 
-    public function render($request, Exception $exception)
+    public function render($request, Throwable $exception)
     {
         // If for some reason Blade hasn't been registered, try it now
         try {
-            if (!app()->bound('view')) {
-                app()->register(\App\Providers\ViewServiceProvider::class);
+            if (! app()->bound('view')) {
+                app()->register(\Illuminate\View\ViewServiceProvider::class);
                 app()->register(\Illuminate\Translation\TranslationServiceProvider::class);
             }
         } catch (\Exception $e) {
@@ -46,19 +47,25 @@ class Handler extends ExceptionHandler
         }
 
         // try to upgrade generic exceptions to more specific ones
-        foreach ($this->upgradable as $class) {
-            if ($new = $class::upgrade($exception)) {
-                return parent::render($request, $new);
+        if (! config('app.debug')) {
+            if ($exception instanceof \Illuminate\View\ViewException || $exception instanceof \Spatie\LaravelIgnition\Exceptions\ViewException) {
+                $base = $exception->getPrevious(); // get real exception
+            }
+
+            foreach ($this->upgradable as $class) {
+                if ($new = $class::upgrade($base ?? $exception)) {
+                    return parent::render($request, $new);
+                }
             }
         }
 
         return parent::render($request, $exception);
     }
 
-    protected function convertExceptionToArray(Exception $e)
+    protected function convertExceptionToArray(Throwable $e)
     {
         // override the non-debug error output to clue in user on how to debug
-        if (!config('app.debug') && !$this->isHttpException($e)) {
+        if (! config('app.debug') && ! $this->isHttpException($e)) {
             return ['message' => 'Server Error: Set APP_DEBUG=true to see details.'];
         }
 

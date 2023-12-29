@@ -41,7 +41,8 @@
                     "sysDescr_regex": {"$ref": "#/definitions/regex_group"},
                     "sysDescr_regex_except": {"$ref": "#/definitions/regex_group"},
                     "snmpget": {"$ref": "#/definitions/snmpget"},
-                    "snmpget_except": {"$ref": "#/definitions/snmpget"}
+                    "snmpget_except": {"$ref": "#/definitions/snmpget"},
+                    "snmpwalk": {"$ref": "#/definitions/snmpget"}
                 },
                 "minProperties": 1,
                 "additionalProperties": false
@@ -77,7 +78,7 @@
                 "cisco-remote-access-monitor": {
                     "type": "boolean"
                 },
-                "cisco-sla": {
+                "slas": {
                     "type": "boolean"
                 },
                 "cisco-ipsec-flow-monitor": {
@@ -95,7 +96,7 @@
                 "cisco-ace-loadbalancer": {
                     "type": "boolean"
                 },
-                "wifi": {
+                "entity-state": {
                     "type": "boolean"
                 },
                 "ipmi": {
@@ -137,7 +138,13 @@
                 "ucd-diskio": {
                     "type": "boolean"
                 },
+                "sensors": {
+                    "type": "boolean"
+                },
                 "services": {
+                    "type": "boolean"
+                },
+                "route": {
                     "type": "boolean"
                 },
                 "stp": {
@@ -164,16 +171,13 @@
                 "mib": {
                     "type": "boolean"
                 },
-                "toner": {
+                "printer-supplies": {
                     "type": "boolean"
                 },
                 "cisco-vpdn": {
                     "type": "boolean"
                 },
-                "libvirt-vminfo": {
-                    "type": "boolean"
-                },
-                "vmware-vminfo": {
+                "vminfo": {
                     "type": "boolean"
                 },
                 "vlans": {
@@ -197,7 +201,13 @@
                 "junose-atm-vp": {
                     "type": "boolean"
                 },
+                "mpls": {
+                    "type": "boolean"
+                },
                 "netscaler-vsvr": {
+                    "type": "boolean"
+                },
+                "xdsl": {
                     "type": "boolean"
                 }
             },
@@ -212,7 +222,7 @@
                 "cisco-cef": {
                     "type": "boolean"
                 },
-                "cisco-sla": {
+                "slas": {
                     "type": "boolean"
                 },
                 "cisco-mac-accounting": {
@@ -222,6 +232,9 @@
                     "type": "boolean"
                 },
                 "cisco-pw": {
+                    "type": "boolean"
+                },
+                "entity-state": {
                     "type": "boolean"
                 },
                 "vrf": {
@@ -263,6 +276,9 @@
                 "ucd-diskio": {
                     "type": "boolean"
                 },
+                "ucd-dsktable": {
+                    "type": "boolean"
+                },
                 "services": {
                     "type": "boolean"
                 },
@@ -281,7 +297,7 @@
                 "arp-table": {
                     "type": "boolean"
                 },
-                "toner": {
+                "printer-supplies": {
                     "type": "boolean"
                 },
                 "ipv4-addresses": {
@@ -323,13 +339,16 @@
                 "junose-atm-vp": {
                     "type": "boolean"
                 },
-                "vmware-vminfo": {
+                "vminfo": {
                     "type": "boolean"
                 },
-                "libvirt-vminfo": {
+                "mpls": {
                     "type": "boolean"
                 },
                 "ip6-addresses": {
+                    "type": "boolean"
+                },
+                "xdsl": {
                     "type": "boolean"
                 }
             },
@@ -338,18 +357,33 @@
         "ifname": {
             "type": "boolean"
         },
-        "mib_dir": {"$ref": "#/definitions/string_group"},
+        "mib_dir": {
+            "type":  "string"
+        },
         "good_if": {
             "type": "array",
             "items": {
                 "type": "string"
             }
         },
-        "nobulk": {
+        "oids": {
+            "type": "object",
+            "properties": {
+                "no_bulk": {
+                    "type": "array"
+                },
+                "unordered": {
+                    "type": "array"
+                }
+            },
+            "additionalProperties": false
+        },
+        "snmp_bulk": {
             "type": "boolean"
         },
         "snmp_max_oid": {
-            "type": "string"
+            "type": "integer",
+            "minimum": 1
         },
         "ifXmcbc": {
             "type": "boolean"
@@ -360,9 +394,7 @@
         "empty_ifdescr": {
             "type": "boolean"
         },
-        "register_mibs": {
-            "type": "object"
-        },
+        "bad_entity_sensor_regex": {"$ref": "#/definitions/regex_group"},
         "bad_if": {
             "type": "array",
             "items": {
@@ -390,6 +422,13 @@
         "processor_stacked": {
             "type": "boolean"
         },
+        "disabled_sensors": {
+            "type": "object",
+            "patternProperties": {
+                ".": {"type": "boolean"}
+            }
+        },
+        "disabled_sensors_regex": {"$ref": "#/definitions/regex_group"},
         "bad_ifname_regexp": {"$ref": "#/definitions/regex_group"},
         "bad_if_regexp": {"$ref": "#/definitions/regex_group"},
         "bad_snmpEngineTime": {
@@ -418,7 +457,8 @@
     "required": [
         "os",
         "text",
-        "type"
+        "type",
+        "discovery"
     ],
     "definitions": {
         "string_group": {
@@ -524,7 +564,8 @@
                 "not_contains",
                 "not_regex",
                 "in_array",
-                "not_in_array"
+                "not_in_array",
+                "exists"
             ]
         }
     }

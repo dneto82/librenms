@@ -2,6 +2,8 @@
 <?php
 
 use App\Jobs\PingCheck;
+use LibreNMS\Data\Store\Datastore;
+use LibreNMS\Util\Debug;
 
 $init_modules = ['alerts', 'laravel', 'nodb'];
 require __DIR__ . '/includes/init.php';
@@ -20,16 +22,10 @@ END;
     exit;
 }
 
-set_debug(isset($options['d']));
+Debug::set(isset($options['d']));
+Debug::setVerbose(isset($options['v']));
 
-if (isset($options['v'])) {
-    global $vdebug;
-    $vdebug = true;
-}
-
-if (isset($options['r'])) {
-    Config::set('norrd', true);
-}
+Datastore::init($options);
 
 if (isset($options['g'])) {
     $groups = explode(',', $options['g']);

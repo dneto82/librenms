@@ -1,15 +1,143 @@
-source: Extensions/Plugin-System.md
-path: blob/master/doc/
-
 # Developing for the Plugin System
 
-This will most likely be deprecated in favour of adding the possible
-extensions to the core code base.
+With plugins you can extend LibreNMS with special functions that are
+specific to your setup or are not relevant or interesting for all community members.
 
-This documentation will hopefully give you a basis for how to write a
-plugin for LibreNMS. A test plugin is included in LibreNMS distribution.
+You are able to intervene in defined places in the behavior of
+the website, without it coming to problems with future updates.
 
-# Generic structure
+This documentation will give you a basis for writing a plugin for
+LibreNMS. An example plugin is included in the LibreNMS distribution.
+
+
+## Version 2 Plugin System structure
+
+Plugins in version 2 need to be installed into app/Plugins
+
+>Note: Plugins are disabled when the have an error, to show errors instead set plugins.show_errors
+
+The structure of a plugin is follows:
+
+```
+app/Plugins
+            /PluginName
+                       /DeviceOverview.php
+                       /Menu.php
+                       /Page.php
+                       /PortTab.php
+                       /Settings.php
+                       /resources/views
+                                       /device-overview.blade.php
+                                       /menu.blade.php
+                                       /page.blade.php
+                                       /port-tab.blade.php
+                                       /settings.blade.php
+```
+
+The above structure is checked before a plugin can be installed.
+
+All file/folder names are case sensitive and must match the structure.
+
+Only the blade files that are really needed need to be created. A plugin manager
+will then load a hook that has a basic functionality.
+
+If you want to customize the basic behavior of the hooks, you can create a
+class in 'app/Plugins/PluginName' and overload the hook methods.
+
+- device-overview.blade.php :: This is called in the Device
+  Overview page. You receive the $device as a object per default, you can do your
+  work here and display your results in a frame.
+
+```
+<div class="row">
+    <div class="col-md-12">
+        <div class="panel panel-default panel-condensed">
+            <div class="panel-heading">
+                <strong>{{ $title }}</strong>
+            </div>
+            <div class="panel-body">
+                <div class="row">
+                    <div class="col-sm-12">
+                         {{ $device->hostname }}
+                 <!-- Do you stuff here -->
+                    </div>
+        </div>
+        </div>
+    </div>
+    </div>
+</div>
+```
+
+- port-tab.blade.php :: This is called in the Port page,
+  in the "Plugins" menu_option that will appear when your plugin gets
+  enabled. In this blade, you can do your work and display your
+  results in a frame.
+
+- menu.blade.php :: For a menu entry
+
+- page.blade.pho :: Here is a good place to add a own LibreNMS page without dependence with a device. A good place to create your own lists with special requirements and behavior.
+
+- settings.blade.php :: If you need your own settings and variables, you can have a look in the ExamplePlugin.
+
+
+### PHP Hooks customization
+
+PHP code should run inside your hooks method and not your blade view.
+The built in hooks support authorize and data methods.
+
+These methods are called with [Dependency Injection](https://laravel.com/docs/container#method-invocation-and-injection)
+Hooks with relevant database models will include them in these calls.
+Additionally, the settings argument may be included to inject the plugin settings into the method.
+
+#### Data
+
+You can overrid the data method to supply data to your view.  You should also do any processing here.
+You can do things like access the database or configuration settings and more.
+
+In the data method we are injecting settings here to count how many we have for display in the menu entry blade view.
+Note that you must specify a default value (`= []` here) for any arguments that don't exist on the parent method.
+
+```php
+class Menu extends MenuEntryHook
+{
+    public function data(array $settings = []): array
+    {
+        return [
+            'count' => count($settings),
+        ];
+    }
+}
+```
+
+#### Authorize 
+
+By default hooks are always shown, but you may control when the user is authorized to view the hook content.
+
+As an example, you could imagine that the device-overview.blade.php should only be displayed when the
+device is in maintanence mode and the current user has the admin role. 
+
+```php
+class DeviceOverview extends DeviceOverviewHook
+{
+    public function authorize(User $user, Device $device): bool
+    {
+        return $user->can('admin') && $device->isUnderMaintenance();
+    }
+}
+```
+
+
+### Full plugin
+
+You may create a full plugin that can publish multiple routes, views, database migrations and more.
+Create a package according to the Laravel documentation you may call any of the supported hooks to tie into LibreNMS.
+
+https://laravel.com/docs/packages
+
+> This is untested, please come to discord and share any expriences and update this documentation!
+
+
+## Version 1 Plugin System structure (legacy verion)
 
 Plugins need to be installed into html/plugins
 
@@ -56,7 +184,7 @@ class Test {
 ?>
 ```
 
-# System Hooks
+## System Hooks
 
 System hooks are called as functions within your plugin class. The
 following system hooks are currently available:
@@ -75,7 +203,7 @@ following system hooks are currently available:
   work here and display your results in a frame.
 
 ```
-    public function device_overview_container($device) {
+    public static function device_overview_container($device) {
         echo('<div class="container-fluid"><div class="row"> <div class="col-md-12"> <div class="panel panel-default panel-condensed"> <div class="panel-heading"><strong>'.get_class().' Plugin </strong> </div>');
         echo('  Example plugin in "Device - Overview" tab <br>');
         echo('</div></div></div></div>');
@@ -88,7 +216,7 @@ following system hooks are currently available:
   results in a frame.
 
 ```
-    public function port_container($device, $port) {
+    public static function port_container($device, $port) {
         echo('<div class="container-fluid"><div class="row"> <div class="col-md-12"> <div class="panel panel-default panel-condensed"> <div class="panel-heading"><strong>'.get_class().' plugin in "Port" tab</strong> </div>');
         echo ('Example display in Port tab</br>');
         echo('</div></div></div></div>');

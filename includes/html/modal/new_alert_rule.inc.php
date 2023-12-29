@@ -22,12 +22,11 @@ $default_interval = Config::get('alert_rule.interval') . 'm';
 $default_mute_alerts = Config::get('alert_rule.mute_alerts');
 $default_invert_rule_match = Config::get('alert_rule.invert_rule_match');
 $default_recovery_alerts = Config::get('alert_rule.recovery_alerts');
+$default_acknowledgement_alerts = Config::get('alert_rule.acknowledgement_alerts');
 $default_invert_map = Config::get('alert_rule.invert_map');
 
 if (Auth::user()->hasGlobalAdmin()) {
-    $filters = json_encode(new QueryBuilderFilter('alert'));
-
-    ?>
+    $filters = json_encode(new QueryBuilderFilter('alert')); ?>
 
     <div class="modal fade" id="create-alert" tabindex="-1" role="dialog"
          aria-labelledby="Create" aria-hidden="true">
@@ -54,7 +53,7 @@ if (Auth::user()->hasGlobalAdmin()) {
                         <div class="tab-content">
                             <div role="tabpanel" class="tab-pane active" id="main">
                                 <div class='form-group' title="The description of this alert rule.">
-                                    <label for='rule_name' class='col-sm-3 col-md-2 control-label'>Rule name: </label>
+                                    <label for='rule_name' class='col-sm-3 col-md-2 control-label'>Rule name </label>
                                     <div class='col-sm-9 col-md-10'>
                                         <input type='text' id='rule_name' name='name' class='form-control validation' maxlength='200' required>
                                     </div>
@@ -81,7 +80,7 @@ if (Auth::user()->hasGlobalAdmin()) {
                                     </div>
                                 </div>
                                 <div class="form-group" title="How to display the alert.  OK: green, Warning: yellow, Critical: red">
-                                    <label for='severity' class='col-sm-3 col-md-2 control-label'>Severity: </label>
+                                    <label for='severity' class='col-sm-3 col-md-2 control-label'>Severity </label>
                                     <div class="col-sm-2">
                                         <select name='severity' id='severity' class='form-control'>
                                             <option value='ok'>OK</option>
@@ -91,53 +90,57 @@ if (Auth::user()->hasGlobalAdmin()) {
                                     </div>
                                 </div>
                                 <div class="form-group form-inline">
-                                    <label for='count' class='col-sm-3 col-md-2 control-label' title="How many notifications to issue while active before stopping. -1 means no limit. If interval is 0, this has no effect.">Max alerts: </label>
+                                    <label for='count' class='col-sm-3 col-md-2 control-label' title="How many notifications to issue while active before stopping. -1 means no limit. If interval is 0, this has no effect.">Max alerts </label>
                                     <div class="col-sm-2" title="How many notifications to issue while active before stopping. -1 means no limit. If interval is 0, this has no effect.">
                                         <input type='text' id='count' name='count' class='form-control' size="4" value="123">
                                     </div>
-                                    <div class="col-sm-3" title="How log to wait before issuing a notification. If the alert clears before the delay, no notification will be issued. (s,m,h,d)">
-                                        <label for='delay' class='control-label' style="vertical-align: top;">Delay: </label>
+                                    <div class="col-sm-3" title="How long to wait before issuing a notification. If the alert clears before the delay, no notification will be issued. (s,m,h,d)">
+                                        <label for='delay' class='control-label' style="vertical-align: top;">Delay </label>
                                         <input type='text' id='delay' name='delay' class='form-control' size="4">
                                     </div>
                                     <div class="col-sm-4 col-md-3" title="How often to re-issue notifications while this alert is active. 0 means notify once. This is affected by the poller interval. (s,m,h,d)">
-                                        <label for='interval' class='control-label' style="vertical-align: top;">Interval: </label>
+                                        <label for='interval' class='control-label' style="vertical-align: top;">Interval </label>
                                         <input type='text' id='interval' name='interval' class='form-control' size="4">
                                     </div>
                                 </div>
                                 <div class='form-group form-inline'>
-                                    <label for='mute' class='col-sm-3 col-md-2 control-label' title="Show alert status in the webui, but do not issue notifications.">Mute alerts: </label>
+                                    <label for='mute' class='col-sm-3 col-md-2 control-label' title="Show alert status in the webui, but do not issue notifications.">Mute alerts </label>
                                     <div class='col-sm-2' title="Show alert status in the webui, but do not issue notifications.">
                                         <input type="checkbox" name="mute" id="mute">
                                     </div>
-                                    <label for='invert' class='col-sm-3 col-md-3 control-label' title="Alert when this rule doesn't match." style="vertical-align: top;">Invert rule match: </label>
+                                    <label for='invert' class='col-sm-3 col-md-3 control-label' title="Alert when this rule doesn't match." style="vertical-align: top;">Invert rule match </label>
                                     <div class='col-sm-2' title="Alert when this rule doesn't match.">
                                         <input type='checkbox' name='invert' id='invert'>
                                     </div>
                                 </div>
-                                <div class="form-group" title="Issue recovery notifications.">
-                                    <label for='recovery' class='col-sm-3 col-md-2 control-label'>Recovery alerts: </label>
-                                    <div class='col-sm-2'>
+                                <div class="form-group form-inline">
+                                    <label for='recovery' class='col-sm-3 col-md-2 control-label' title="Issue recovery alerts.">Recovery alerts </label>
+                                    <div class='col-sm-2' title="Issue recovery alerts.">
                                         <input type='checkbox' name='recovery' id='recovery'>
+                                    </div>
+                                    <label for='acknowledgement' class='col-sm-3 col-md-3 control-label' title="Issue acknowledgement alerts." style="vertical-align: top;">Acknowledgement alerts </label>
+                                    <div class='col-sm-2' title="Issue acknowledgement alerts.">
+                                        <input type='checkbox' name='acknowledgement' id='acknowledgement'>
                                     </div>
                                 </div>
                                 <div class="form-group form-inline">
-                                    <label for='maps' class='col-sm-3 col-md-2 control-label' title="Restricts this alert rule to the selected devices, groups and locations.">Match devices, groups and locations list: </label>
+                                    <label for='maps' class='col-sm-3 col-md-2 control-label' title="Restricts this alert rule to the selected devices, groups and locations.">Match devices, groups and locations list </label>
                                     <div class="col-sm-7" style="width: 56%;">
                                         <select id="maps" name="maps[]" class="form-control" multiple="multiple"></select>
                                     </div>
                                     <div>
-                                        <label for='invert_map' class='col-md-1' style="width: 14.1333%;" text-align="left" title="If ON, alert rule check will run on all devices except the selected devices and groups.">All devices except in list: </label>
+                                        <label for='invert_map' class='col-md-1' style="width: 14.1333%;" text-align="left" title="If ON, alert rule check will run on all devices except the selected devices and groups.">All devices except in list </label>
                                         <input type='checkbox' name='invert_map' id='invert_map'>
                                     </div>
                                 </div>
                                 <div class="form-group" title="Restricts this alert rule to specified transports.">
-                                    <label for="transports" class="col-sm-3 col-md-2 control-label">Transports: </label>
+                                    <label for="transports" class="col-sm-3 col-md-2 control-label">Transports </label>
                                     <div class="col-sm-9 col-md-10">
                                         <select id="transports" name="transports[]" class="form-control" multiple="multiple"></select>
                                     </div>
                                 </div>
                                 <div class='form-group' title="A link to some documentation on how to handle this alert. This will be included in notifications.">
-                                    <label for='proc' class='col-sm-3 col-md-2 control-label'>Procedure URL: </label>
+                                    <label for='proc' class='col-sm-3 col-md-2 control-label'>Procedure URL </label>
                                     <div class='col-sm-9 col-md-10'>
                                         <input type='text' id='proc' name='proc' class='form-control validation' pattern='(http|https)://.*' maxlength='80'>
                                     </div>
@@ -194,7 +197,7 @@ if (Auth::user()->hasGlobalAdmin()) {
 
             filters: <?php echo $filters; ?>,
             operators: [
-                'equal', 'not_equal', 'between', 'not_between', 'begins_with', 'not_begins_with', 'contains', 'not_contains', 'ends_with', 'not_ends_with', 'is_empty', 'is_not_empty', 'is_null', 'is_not_null', 'in', 'not_in',
+                'equal', 'not_equal', 'between', 'not_between', 'begins_with', 'not_begins_with', 'contains', 'not_contains', 'ends_with', 'not_ends_with', 'is_empty', 'is_not_empty', 'is_null', 'is_not_null',
                 {type: 'less', nb_inputs: 1, multiple: false, apply_to: ['string', 'number', 'datetime']},
                 {type: 'less_or_equal', nb_inputs: 1, multiple: false, apply_to: ['string', 'number', 'datetime']},
                 {type: 'greater', nb_inputs: 1, multiple: false, apply_to: ['string', 'number', 'datetime']},
@@ -310,6 +313,7 @@ if (Auth::user()->hasGlobalAdmin()) {
                 $("#mute").bootstrapSwitch('state', <?=$default_mute_alerts?>);
                 $("#invert").bootstrapSwitch('state', <?=$default_invert_rule_match?>);
                 $("#recovery").bootstrapSwitch('state', <?=$default_recovery_alerts?>);
+                $("#acknowledgement").bootstrapSwitch('state', <?=$default_acknowledgement_alerts?>);
                 $("#override_query").bootstrapSwitch('state', false);
                 $("#invert_map").bootstrapSwitch('state', <?=$default_invert_map?>);
                 $(this).find("input[type=text]").val("");
@@ -391,6 +395,9 @@ if (Auth::user()->hasGlobalAdmin()) {
                 if (typeof extra.recovery == 'undefined') {
                     extra.recovery = '<?=$default_recovery_alerts?>';
                 }
+                if (typeof extra.acknowledgement == 'undefined') {
+                    extra.acknowledgement = '<?=$default_acknowledgement_alerts?>';
+                }
 
                 if (typeof extra.options == 'undefined') {
                     extra.options = new Array();
@@ -399,6 +406,7 @@ if (Auth::user()->hasGlobalAdmin()) {
                     extra.options.override_query = false;
                 }
                 $("[name='recovery']").bootstrapSwitch('state', extra.recovery);
+                $("[name='acknowledgement']").bootstrapSwitch('state', extra.acknowledgement);
 
                 if (rule.invert_map == 1) {
                     $("[name='invert_map']").bootstrapSwitch('state', true);
