@@ -71,10 +71,7 @@ function logfile($string)
 
 function percent_colour($perc)
 {
-    $r = min(255, 5 * ($perc - 25));
-    $b = max(0, 255 - (5 * ($perc + 25)));
-
-    return sprintf('#%02x%02x%02x', $r, $b, $b);
+    return \LibreNMS\Util\Color::percent(percent: $perc);
 }
 
 /**
@@ -142,7 +139,7 @@ function device_discovery_trigger($id)
         $message = 'Error rediscovering device';
     }
 
-    return ['status'=> $update, 'message' => $message];
+    return ['status' => $update, 'message' => $message];
 }
 
 function delete_device($id)
@@ -740,13 +737,13 @@ function getCIMCentPhysical($location, &$entphysical, &$index)
         // Now we have an ID, create the entry.
         $index++;
         $insert = [
-            'device_id'                 => $device['device_id'],
-            'entPhysicalIndex'          => $index,
-            'entPhysicalClass'          => 'container',
-            'entPhysicalVendorType'     => $location,
-            'entPhysicalName'           => $shortlocation,
-            'entPhysicalContainedIn'    => $parent,
-            'entPhysicalParentRelPos'   => '-1',
+            'device_id' => $device['device_id'],
+            'entPhysicalIndex' => $index,
+            'entPhysicalClass' => 'container',
+            'entPhysicalVendorType' => $location,
+            'entPhysicalName' => $shortlocation,
+            'entPhysicalContainedIn' => $parent,
+            'entPhysicalParentRelPos' => '-1',
         ];
 
         // Add to the DB and Array.
@@ -837,21 +834,21 @@ function cache_peeringdb()
                         if ($tmp_peer) {
                             $peer_keep[] = $tmp_peer['pdb_ix_peers_id'];
                             $update = [
-                                'remote_asn'     => $peer->{'asn'},
-                                'remote_ipaddr4'  => $peer->{'ipaddr4'},
+                                'remote_asn' => $peer->{'asn'},
+                                'remote_ipaddr4' => $peer->{'ipaddr4'},
                                 'remote_ipaddr6' => $peer->{'ipaddr6'},
-                                'name'           => $peer_name,
+                                'name' => $peer_name,
                             ];
                             dbUpdate($update, 'pdb_ix_peers', '`pdb_ix_peers_id` = ?', [$tmp_peer['pdb_ix_peers_id']]);
                         } else {
                             $peer_insert = [
-                                'ix_id'          => $ixid,
-                                'peer_id'        => $peer->{'id'},
-                                'remote_asn'     => $peer->{'asn'},
+                                'ix_id' => $ixid,
+                                'peer_id' => $peer->{'id'},
+                                'remote_asn' => $peer->{'asn'},
                                 'remote_ipaddr4' => $peer->{'ipaddr4'},
                                 'remote_ipaddr6' => $peer->{'ipaddr6'},
-                                'name'           => $peer_name,
-                                'timestamp'      => time(),
+                                'name' => $peer_name,
+                                'timestamp' => time(),
                             ];
                             $peer_keep[] = dbInsert($peer_insert, 'pdb_ix_peers');
                         }
